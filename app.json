@@ -1,4 +1,9 @@
 {
   "name": "HowzitShoutOuts",
-  "displayName": "HowzitShoutOuts"
+  "displayName": "HowzitShoutOuts",
+  "extra": {
+    "eas": {
+      "projectId": "abb7f164-3043-4321-ad80-f00129444b42"
+    }
+  }
 }
