@@ -3,14 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   Image,
   StatusBar,
-  Animated,
   TextInput,
   RefreshControl,
 } from 'react-native';
+import { SwipeListView } from 'react-native-swipe-list-view';
 import Colors from '../../constants/Colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -22,7 +21,7 @@ export default function CelebrityDashboard({ navigation, route }) {
       id: '1',
       customerName: 'Gina',
       messageType: 'video',
-      deliveryTime: '2025-06-05T10:00:00',
+      deliveryTime: '2025-08-10T10:00:00',
       status: 'Pending',
       message: 'Happy birthday shoutout!',
       recipient: 'James',
@@ -31,7 +30,7 @@ export default function CelebrityDashboard({ navigation, route }) {
       id: '2',
       customerName: 'Alex',
       messageType: 'audio',
-      deliveryTime: '2025-06-06T15:00:00',
+      deliveryTime: '2025-08-09T15:00:00',
       status: 'Accepted',
       message: 'Encouragement message',
       recipient: 'Nina',
@@ -42,47 +41,46 @@ export default function CelebrityDashboard({ navigation, route }) {
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  const filteredRequests = requests.filter((req) =>
-    req.customerName.toLowerCase().includes(search.toLowerCase()) ||
-    req.recipient.toLowerCase().includes(search.toLowerCase())
-  );
-
   const emojiMap = {
     video: '🎥',
     audio: '🎙️',
     text: '💬',
   };
 
-  const animations = useRef({}).current;
+  const groupedRequests = ['Pending', 'Accepted'].flatMap((status) => {
+    const group = requests
+      .filter((r) => r.status === status)
+      .filter((r) =>
+        r.customerName.toLowerCase().includes(search.toLowerCase()) ||
+        r.recipient.toLowerCase().includes(search.toLowerCase())
+      );
+    return group.length ? [{ header: status }, ...group] : [];
+  });
 
-  const renderItem = ({ item, index }) => {
-    if (!animations[item.id]) {
-      animations[item.id] = new Animated.Value(0);
-      Animated.timing(animations[item.id], {
-        toValue: 1,
-        duration: 400,
-        delay: index * 100,
-        useNativeDriver: true,
-      }).start();
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRequests([...initialRequests]);
+      setRefreshing(false);
+    }, 1000);
+  };
+
+  const handleDelete = (id) => {
+    setRequests((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const total = requests.length;
+  const pending = requests.filter(r => r.status === 'Pending').length;
+  const accepted = requests.filter(r => r.status === 'Accepted').length;
+
+  const renderItem = (data) => {
+    if (data.item.header) {
+      return <Text style={styles.groupHeader}>{data.item.header}</Text>;
     }
 
+    const item = data.item;
     return (
-      <Animated.View
-        style={[
-          styles.card,
-          {
-            opacity: animations[item.id],
-            transform: [
-              {
-                translateY: animations[item.id].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20, 0],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
+      <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Ionicons name="person-circle-outline" size={28} color={Colors.primary} />
           <View style={{ marginLeft: 10 }}>
@@ -93,7 +91,7 @@ export default function CelebrityDashboard({ navigation, route }) {
 
         <View style={styles.detailRow}>
           <Text style={styles.info}>
-            Type: {emojiMap[item.messageType] || ''} {item.messageType.toUpperCase()}
+            Type: {emojiMap[item.messageType]} {item.messageType.toUpperCase()}
           </Text>
           <Text style={styles.info}>
             Delivery: {new Date(item.deliveryTime).toLocaleString()}
@@ -117,25 +115,26 @@ export default function CelebrityDashboard({ navigation, route }) {
               },
             })
           }
+          activeOpacity={0.8}
         >
           <Text style={styles.buttonText}>View Details</Text>
         </TouchableOpacity>
-      </Animated.View>
+      </View>
     );
   };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      // Replace with real fetch logic later
-      setRequests([...initialRequests]);
-      setRefreshing(false);
-    }, 1000);
+  const renderHiddenItem = (data) => {
+    if (data.item.header) return null;
+    return (
+      <TouchableOpacity
+        style={styles.hiddenButton}
+        onPress={() => handleDelete(data.item.id)}
+      >
+        <Ionicons name="trash" size={22} color="#fff" />
+        <Text style={{ color: '#fff', fontSize: 12 }}>Delete</Text>
+      </TouchableOpacity>
+    );
   };
-
-  const total = requests.length;
-  const pending = requests.filter(r => r.status === 'Pending').length;
-  const accepted = requests.filter(r => r.status === 'Accepted').length;
 
   return (
     <View style={styles.container}>
@@ -145,10 +144,10 @@ export default function CelebrityDashboard({ navigation, route }) {
         resizeMode="cover"
       />
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+
       <Text style={styles.header}>Hey {celebProfile.name} 👋</Text>
       <Text style={styles.subHeader}>Ready to make someone smile today?</Text>
 
-      {/* Summary Cards */}
       <View style={styles.summaryContainer}>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>Total</Text>
@@ -164,7 +163,6 @@ export default function CelebrityDashboard({ navigation, route }) {
         </View>
       </View>
 
-      {/* Search Bar */}
       <TextInput
         placeholder="Search by name or recipient..."
         style={styles.searchInput}
@@ -173,17 +171,25 @@ export default function CelebrityDashboard({ navigation, route }) {
         placeholderTextColor="#aaa"
       />
 
-      {/* List */}
-      <FlatList
-        data={filteredRequests}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      />
+      {groupedRequests.length === 0 ? (
+        <View style={{ alignItems: 'center', marginTop: 40 }}>
+          <Text style={{ fontSize: 16, color: '#888' }}>No requests found 😕</Text>
+        </View>
+      ) : (
+        <SwipeListView
+          data={groupedRequests}
+          keyExtractor={(item, index) => item.id || `header-${index}`}
+          renderItem={renderItem}
+          renderHiddenItem={renderHiddenItem}
+          rightOpenValue={-75}
+          disableRightSwipe
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        />
+      )}
     </View>
   );
 }
@@ -215,7 +221,7 @@ const styles = StyleSheet.create({
   summaryContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   summaryCard: {
     backgroundColor: '#fff',
@@ -250,6 +256,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
   },
+  groupHeader: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginVertical: 10,
+    marginLeft: 8,
+  },
   card: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -282,10 +295,10 @@ const styles = StyleSheet.create({
   statusBubble: (status) => ({
     backgroundColor:
       status === 'Pending'
-        ? Colors.accentBlue
+        ? '#007bff'
         : status === 'Accepted'
-          ? '#ffc107'
-          : Colors.accentGreen,
+        ? '#ffc107'
+        : '#28a745',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 30,
@@ -309,23 +322,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  hiddenButton: {
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-  },
-  navText: {
-    fontSize: 10,
-    color: Colors.primary,
-    marginTop: 2,
-    textAlign: 'center',
+    width: 75,
+    height: '100%',
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
-  ActivityIndicator,
   Image,
+  ToastAndroid,
+  Platform
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -20,23 +21,44 @@ export default function RequestDetails() {
   const [submitted, setSubmitted] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [countdown, setCountdown] = useState('');
 
   const request = {
     id: 'REQ-1293',
     celeb: 'DJ Breezy',
     user: 'Alex T.',
     message: 'Happy Birthday Alex! 🎉🎂',
-    dateRequested: '2025-06-01',
+    dateRequested: '2025-08-06T12:00:00',
+    deadline: '2025-08-10T12:00:00',
     type: 'Video',
     status: 'Pending',
     length: '30 seconds',
     userNote: 'Please say it with excitement and mention his name clearly.',
   };
 
-  const handleAccept = () => {
-    setAccepted(true);
-    Alert.alert('Request Accepted', 'You can now upload your shoutout.');
-  };
+  useEffect(() => {
+    const deadline = new Date(request.deadline); // moved inside useEffect
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const diff = deadline - now;
+
+      if (diff <= 0) {
+        setCountdown('Expired');
+        clearInterval(interval);
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      setCountdown(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [request.deadline]); // only re-run if deadline string changes
 
   const pickMedia = () => {
     launchImageLibrary(
@@ -49,7 +71,13 @@ export default function RequestDetails() {
         if (response.errorCode) {
           Alert.alert('Error', response.errorMessage || 'Media selection failed');
         } else {
-          setMedia(response.assets[0]);
+          const video = response.assets[0];
+          const sizeMB = video.fileSize / (1024 * 1024);
+          if (sizeMB > 50) {
+            Alert.alert('File Too Large', 'Video must be under 50MB.');
+            return;
+          }
+          setMedia(video);
         }
       }
     );
@@ -65,7 +93,11 @@ export default function RequestDetails() {
         clearInterval(interval);
         setUploading(false);
         setSubmitted(true);
-        Alert.alert('Shoutout Submitted', 'Your video has been successfully submitted!');
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('✅ Shoutout submitted successfully!', ToastAndroid.LONG);
+        } else {
+          Alert.alert('✅ Shoutout submitted successfully!');
+        }
       }
     }, 300);
   };
@@ -108,7 +140,9 @@ export default function RequestDetails() {
         <DetailRow label="From" value={request.celeb} />
         <DetailRow label="To" value={request.user} />
         <DetailRow label="Message" value={`"${request.message}"`} />
-        <DetailRow label="Requested On" value={request.dateRequested} />
+        <DetailRow label="Requested On" value={new Date(request.dateRequested).toLocaleString()} />
+        <DetailRow label="Deadline" value={new Date(request.deadline).toLocaleString()} />
+        <DetailRow label="Countdown" value={countdown} />
         <DetailRow label="Type" value={request.type} />
         <DetailRow label="Length" value={request.length} />
         <DetailRow label="Status" value={renderStatus()} />
@@ -116,7 +150,7 @@ export default function RequestDetails() {
       </View>
 
       {!accepted && !submitted && (
-        <TouchableOpacity style={styles.acceptBtn} onPress={handleAccept}>
+        <TouchableOpacity style={styles.acceptBtn} onPress={handleSubmit}>
           <Text style={styles.btnText}>Accept Request</Text>
         </TouchableOpacity>
       )}
@@ -177,13 +211,10 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     opacity: 0.08,
   },
-  scroll: {
-    flex: 1,
-    backgroundColor: '#fff9f5',
-  },
   container: {
     padding: 24,
     paddingBottom: 20,
+    backgroundColor: '#fff9f5',
   },
   heading: {
     fontSize: 26,

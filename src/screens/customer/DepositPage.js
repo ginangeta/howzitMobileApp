@@ -19,7 +19,7 @@ const paymentMethods = [
   { id: 'visa', name: 'VISA/MasterCard', icon: 'card-outline' },
 ];
 
-export default function DepositPage(navigation) {
+export default function DepositPage({ navigation }) {
   const [amount, setAmount] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('onemoney');
   const [otpModalVisible, setOtpModalVisible] = useState(false);
@@ -30,8 +30,6 @@ export default function DepositPage(navigation) {
       Alert.alert('Invalid Amount', 'Please enter a valid amount to deposit.');
       return;
     }
-
-    // Open OTP Modal
     setOtpModalVisible(true);
   };
 
@@ -40,7 +38,6 @@ export default function DepositPage(navigation) {
       Alert.alert('Invalid OTP', 'Please enter the 6-digit code sent to your phone.');
       return;
     }
-
     setOtpModalVisible(false);
     setOtp('');
     Alert.alert(
@@ -59,70 +56,80 @@ export default function DepositPage(navigation) {
       />
 
       {/* Back Button */}
-      {/* <TouchableOpacity
+      <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
         activeOpacity={0.8}
       >
         <Icon name="arrow-back" size={24} color={Colors.primary} />
-      </TouchableOpacity> */}
+      </TouchableOpacity>
 
-      <ScrollView contentContainerStyle={styles.content}>
-
-        <Text style={styles.title}>💸 Deposit to Wallet</Text>
-        <Text style={styles.subtitle}>
-          Securely top up your balance using your preferred payment method.
-        </Text>
-
-        <TextInput
-          placeholder="Enter amount"
-          placeholderTextColor="#aaa"
-          keyboardType="numeric"
-          style={styles.input}
-          value={amount}
-          onChangeText={setAmount}
-        />
-
-        <Text style={styles.sectionTitle}>Payment Method</Text>
-        <View style={styles.methodList}>
-          {paymentMethods.map((method) => (
-            <TouchableOpacity
-              key={method.id}
-              style={[
-                styles.methodCard,
-                selectedMethod === method.id && styles.methodCardSelected,
-              ]}
-              onPress={() => setSelectedMethod(method.id)}
-              activeOpacity={0.85}
-            >
-              <Icon
-                name={method.icon}
-                size={24}
-                color={
-                  selectedMethod === method.id ? Colors.primary : '#777'
-                }
-              />
-              <Text
-                style={[
-                  styles.methodText,
-                  selectedMethod === method.id && { color: Colors.primary },
-                ]}
-              >
-                {method.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Wallet Icon + Header */}
+        <View style={styles.header}>
+          <Icon name="wallet" size={60} color={Colors.primary} />
+          <Text style={styles.title}>Deposit to Wallet</Text>
+          <Text style={styles.subtitle}>
+            Securely top up your balance using your preferred payment method.
+          </Text>
         </View>
 
+        {/* Card Section for Amount & Methods */}
+        <View style={styles.card}>
+          <TextInput
+            placeholder="Enter amount"
+            placeholderTextColor="#aaa"
+            keyboardType="numeric"
+            style={styles.input}
+            value={amount}
+            onChangeText={setAmount}
+          />
+
+          <Text style={styles.sectionTitle}>Select Payment Method</Text>
+          <View style={styles.methodList}>
+            {paymentMethods.map((method) => (
+              <TouchableOpacity
+                key={method.id}
+                style={[
+                  styles.methodCard,
+                  selectedMethod === method.id && styles.methodCardSelected,
+                ]}
+                onPress={() => setSelectedMethod(method.id)}
+                activeOpacity={0.85}
+              >
+                <Icon
+                  name={method.icon}
+                  size={28}
+                  color={selectedMethod === method.id ? Colors.primary : '#777'}
+                />
+                <Text
+                  style={[
+                    styles.methodText,
+                    selectedMethod === method.id && { color: Colors.primary },
+                  ]}
+                >
+                  {method.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Deposit Button */}
         <TouchableOpacity style={styles.button} onPress={handleDeposit}>
           <Text style={styles.buttonText}>
-            Deposit with {
-              paymentMethods.find((m) => m.id === selectedMethod)?.name
-            }
+            Deposit with {paymentMethods.find((m) => m.id === selectedMethod)?.name}
           </Text>
         </TouchableOpacity>
+
+        {/* Footer */}
+        <Text style={styles.footerText}>🔒 Secure payment powered by Howzit!</Text>
       </ScrollView>
 
+      {/* OTP Modal */}
       <Modal
         isVisible={otpModalVisible}
         onBackdropPress={() => setOtpModalVisible(false)}
@@ -132,7 +139,7 @@ export default function DepositPage(navigation) {
         style={styles.modal}
       >
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>🔐 Enter OTP</Text>
+          <Text style={styles.modalTitle}>Enter OTP</Text>
           <Text style={styles.modalSubtitle}>
             Enter the 6-digit code sent to your phone
           </Text>
@@ -157,7 +164,7 @@ export default function DepositPage(navigation) {
 const styles = StyleSheet.create({
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.1,
+    opacity: 0.08,
   },
   container: {
     flex: 1,
@@ -178,70 +185,82 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   content: {
-    paddingVertical: 250,
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: 24,
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 30,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: Colors.primary,
-    marginBottom: 6,
-    textAlign: 'center',
+    marginTop: 10,
   },
   subtitle: {
     fontSize: 15,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 28,
-    paddingHorizontal: 10,
+    marginTop: 6,
+    paddingHorizontal: 12,
   },
-  input: {
-    width: '100%',
+  card: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 3,
+    marginBottom: 30,
+  },
+  input: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
     color: '#333',
     borderWidth: 1,
     borderColor: '#eee',
-    marginBottom: 30,
+    marginBottom: 24,
     textAlign: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 1,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 12,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   methodList: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 36,
-    gap: 12,
+    justifyContent: 'space-around',
   },
   methodCard: {
     backgroundColor: '#fdfdfd',
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 18,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#eee',
     minWidth: 90,
+    shadowColor: '#000',
+    shadowOpacity: 0.02,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 1,
   },
   methodCardSelected: {
     borderColor: Colors.primary,
     backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
     elevation: 2,
@@ -268,6 +287,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  footerText: {
+    marginTop: 20,
+    fontSize: 13,
+    color: '#888',
     textAlign: 'center',
   },
   modal: {

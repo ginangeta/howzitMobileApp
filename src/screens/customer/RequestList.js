@@ -111,7 +111,7 @@ export default function RequestList({ navigation }) {
         style={styles.backgroundImage}
         resizeMode="cover"
       />
-      <Text style={styles.heading}>📨 Your Shoutout Requests</Text>
+      <Text style={styles.heading}>Your Shoutout Requests</Text>
 
       <TextInput
         style={styles.searchBar}
@@ -138,7 +138,7 @@ export default function RequestList({ navigation }) {
 const styles = StyleSheet.create({
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.2,
+    opacity: 0.08,
   },
   container: {
     flex: 1,

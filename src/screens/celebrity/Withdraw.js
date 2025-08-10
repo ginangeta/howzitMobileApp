@@ -1,3 +1,4 @@
+// No changes here — all imports are good
 import React, { useState } from 'react';
 import {
   View,
@@ -52,13 +53,25 @@ export default function Withdraw({ route, navigation }) {
         Alert.alert(
           'Withdrawal Successful',
           `You have withdrawn $${parseFloat(amount).toFixed(2)}.`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setAmount('');
+                setOtp('');
+                navigation.goBack();
+              },
+            },
+          ]
         );
       } else {
         Alert.alert('Incorrect OTP', 'The OTP entered is incorrect. Please try again.');
       }
     }, 1000);
   };
+
+  const parsedAmount = parseFloat(amount || 0);
+  const receiveAmount = parsedAmount > 0 ? (parsedAmount * 0.98).toFixed(2) : null;
 
   return (
     <View style={styles.container}>
@@ -74,7 +87,7 @@ export default function Withdraw({ route, navigation }) {
 
       <View style={styles.profileRow}>
         <Image
-          source={celebProfile?.avatar || require('../../../assets/images/default_avatar.png')}
+          source={{ uri: celebProfile?.avatar } || require('../../../assets/images/default_avatar.png')}
           style={styles.avatar}
         />
         <View style={{ flex: 1, marginLeft: 12 }}>
@@ -99,11 +112,11 @@ export default function Withdraw({ route, navigation }) {
         placeholderTextColor="#aaa"
       />
 
-      {amount !== '' && parseFloat(amount) > 0 && (
+      {receiveAmount && (
         <View style={styles.previewBox}>
           <Text style={styles.previewLabel}>You'll Receive:</Text>
           <Text style={styles.previewAmount}>
-            ${ (parseFloat(amount) * 0.98).toFixed(2) } 
+            ${receiveAmount}
             <Text style={styles.feeNote}> (after 2% fee)</Text>
           </Text>
         </View>
@@ -130,7 +143,7 @@ export default function Withdraw({ route, navigation }) {
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>🔐 Enter OTP</Text>
           <Text style={styles.modalSubtitle}>
-            Enter the 6-digit code sent to your phone to confirm withdrawal of ${parseFloat(amount || 0).toFixed(2)}.
+            Enter the 6-digit code sent to your phone to confirm withdrawal of ${parsedAmount.toFixed(2)}.
           </Text>
 
           <TextInput

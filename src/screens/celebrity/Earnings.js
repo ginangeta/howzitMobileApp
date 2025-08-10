@@ -37,7 +37,12 @@ export default function Earnings() {
         <View style={styles.textGroup}>
           <Text style={styles.label}>{label}</Text>
           <Text style={styles.amount}>
-            {isCurrency ? `${prefix}${value.toFixed(2)}` : value}
+            {isCurrency
+              ? `${prefix}${Number(value).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`
+              : `${value.toLocaleString()}`}
           </Text>
         </View>
       </View>
@@ -51,7 +56,7 @@ export default function Earnings() {
         style={styles.backgroundImage}
         resizeMode="cover"
       />
-      <Text style={styles.heading}>Earnings Overview</Text>
+      <Text style={styles.heading}>💸 Earnings Overview</Text>
 
       <View style={styles.chartCard}>
         <Text style={styles.sectionLabel}>This Year’s Progress</Text>
@@ -71,7 +76,7 @@ export default function Earnings() {
               stroke: Colors.primary,
             },
             propsForBackgroundLines: {
-              strokeDasharray: '', // solid lines
+              strokeDasharray: '',
               stroke: '#eee',
             },
           }}

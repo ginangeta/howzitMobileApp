@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,12 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  FlatList
+  Animated,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SwipeListView } from 'react-native-swipe-list-view';
 import Colors from '../../constants/Colors';
 import { useLogin } from '../../context/LoginContext';
 
@@ -29,6 +30,12 @@ export default function Profile({ route, navigation }) {
     balance: 200.0,
   };
 
+  const [recentShoutouts, setRecentShoutouts] = useState([
+    { id: '1', recipient: 'James', message: 'Happy Birthday 🎉' },
+    { id: '2', recipient: 'Nina', message: 'You got this 💪' },
+    { id: '3', recipient: 'Max', message: 'Congratulations! 🏆' },
+  ]);
+
   const feedback = [
     { stars: 5, count: 82 },
     { stars: 4, count: 30 },
@@ -37,11 +44,49 @@ export default function Profile({ route, navigation }) {
     { stars: 1, count: 1 },
   ];
 
-  const recentShoutouts = [
-    { id: '1', recipient: 'James', message: 'Happy Birthday 🎉' },
-    { id: '2', recipient: 'Nina', message: 'You got this 💪' },
-    { id: '3', recipient: 'Max', message: 'Congratulations! 🏆' },
-  ];
+  const renderStars = (rating) => {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 >= 0.5;
+    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+    return (
+      <Text style={{ fontSize: 16, color: '#f6b100', marginTop: 2 }}>
+        {'★'.repeat(fullStars)}
+        {halfStar ? '½' : ''}
+        {'☆'.repeat(emptyStars)}
+      </Text>
+    );
+  };
+
+  const renderShoutoutItem = ({ item, index }) => {
+    const fadeAnim = new Animated.Value(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      delay: index * 150,
+      useNativeDriver: true,
+    }).start();
+
+    return (
+      <Animated.View style={{ opacity: fadeAnim }}>
+        <View style={styles.shoutoutCard}>
+          <Text style={styles.shoutoutText}>To: {item.recipient}</Text>
+          <Text style={styles.shoutoutMessage}>{item.message}</Text>
+        </View>
+      </Animated.View>
+    );
+  };
+
+  const renderHiddenItem = (data) => (
+    <TouchableOpacity
+      style={styles.shoutoutDelete}
+      onPress={() => {
+        const updated = recentShoutouts.filter((s) => s.id !== data.item.id);
+        setRecentShoutouts(updated);
+      }}
+    >
+      <Icon name="trash" size={20} color="#fff" />
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -64,6 +109,7 @@ export default function Profile({ route, navigation }) {
       </View>
 
       <Text style={styles.name}>{celebProfile.name}</Text>
+      {renderStars(celebProfile.rating)}
       <Text style={styles.bio}>{celebProfile.bio}</Text>
 
       <View style={styles.statsRow}>
@@ -77,7 +123,6 @@ export default function Profile({ route, navigation }) {
         </View>
       </View>
 
-      {/* Details */}
       <View style={styles.detailBox}>
         <Text style={styles.label}>Available Balance</Text>
         <Text style={styles.value}>${celebProfile.balance.toFixed(2)}</Text>
@@ -97,21 +142,19 @@ export default function Profile({ route, navigation }) {
 
       {/* Recent Shoutouts */}
       <Text style={styles.sectionTitle}>Recent Shoutouts</Text>
-      <FlatList
+      <SwipeListView
         horizontal
         data={recentShoutouts}
         keyExtractor={(item) => item.id}
+        renderItem={renderShoutoutItem}
+        renderHiddenItem={renderHiddenItem}
+        rightOpenValue={-60}
+        disableRightSwipe
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 10 }}
-        renderItem={({ item }) => (
-          <View style={styles.shoutoutCard}>
-            <Text style={styles.shoutoutText}>To: {item.recipient}</Text>
-            <Text style={styles.shoutoutMessage}>{item.message}</Text>
-          </View>
-        )}
       />
 
-      {/* Feedback Breakdown */}
+      {/* Feedback Summary */}
       <Text style={styles.sectionTitle}>Feedback Summary</Text>
       <View style={styles.feedbackContainer}>
         {feedback.map((item) => (
@@ -257,6 +300,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
+    width: 160,
   },
   shoutoutText: {
     fontWeight: '600',
@@ -266,6 +310,14 @@ const styles = StyleSheet.create({
   shoutoutMessage: {
     color: '#333',
     fontSize: 14,
+  },
+  shoutoutDelete: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 60,
+    marginRight: 10,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
   },
   feedbackContainer: {
     width: '100%',
