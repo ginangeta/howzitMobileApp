@@ -24,9 +24,9 @@ export default function CelebrityProfile({ route, navigation }) {
   ];
 
   const previewVideos = celeb.previewVideos || [
-    { label: 'Intro video', uri: celeb.avatar },
-    { label: 'Birthday', uri: celeb.avatar },
-    { label: 'PepTalk', uri: celeb.avatar },
+    { label: 'Intro video', uri: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg' },
+    { label: 'Birthday', uri: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg' },
+    { label: 'PepTalk', uri: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/Sintel.jpg' },
   ];
 
   return (
@@ -51,7 +51,7 @@ export default function CelebrityProfile({ route, navigation }) {
 
       <View style={styles.centeredContent}>
         <View style={styles.centeredHeader}>
-          <Image source={{ uri: celeb.avatar }} style={styles.avatar} />
+          <Image source={{ uri: celeb.picture }} style={styles.avatar} />
           <Text style={styles.name}>{celeb.name}</Text>
           <Text style={styles.specialization}>{celeb.specialization || 'Public Figure'}</Text>
 

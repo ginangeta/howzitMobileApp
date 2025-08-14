@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,73 +11,103 @@ import {
   ScrollView,
 } from 'react-native';
 import Colors from '../../constants/Colors';
-import Icon from 'react-native-vector-icons/Ionicons';
+import api from '../../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const sampleCelebs = [
   {
     id: '1',
-    name: 'DJ Zinhle',
+    displayName: 'DJ Zinhle',
     category: 'Musician',
     price: 25,
     deliveryTime: '2 days',
     rating: 4.8,
     shoutoutsCount: 142,
-    avatar: 'https://randomuser.me/api/portraits/men/70.jpg',
+    picture: 'https://randomuser.me/api/portraits/men/70.jpg',
     bio: 'Top DJ and businesswoman ready to hype you up!',
   },
   {
     id: '2',
-    name: 'Cassper Nyovest',
+    displayName: 'Cassper Nyovest',
     category: 'Musician',
     price: 40,
     deliveryTime: '1 day',
     rating: 4.6,
     shoutoutsCount: 220,
-    avatar: 'https://randomuser.me/api/portraits/men/54.jpg',
+    picture: 'https://randomuser.me/api/portraits/men/54.jpg',
     bio: 'South African rap legend. Bringing the hype to your screen!',
   },
   {
     id: '3',
-    name: 'Sho Madjozi',
+    displayName: 'Sho Madjozi',
     category: 'Actor',
     price: 30,
     deliveryTime: '3 days',
     rating: 4.9,
     shoutoutsCount: 190,
-    avatar: 'https://randomuser.me/api/portraits/women/30.jpg',
+    picture: 'https://randomuser.me/api/portraits/women/30.jpg',
     bio: 'Colorful, creative, and full of joy! Let’s celebrate together!',
   },
   {
     id: '4',
-    name: 'Black Coffee',
+    displayName: 'Black Coffee',
     category: 'Musician',
     price: 50,
     deliveryTime: '2 days',
     rating: 4.7,
     shoutoutsCount: 165,
-    avatar: 'https://randomuser.me/api/portraits/men/63.jpg',
+    picture: 'https://randomuser.me/api/portraits/men/63.jpg',
     bio: 'Global DJ with a touch of class. Shoutouts with style.',
   },
 ];
 
 export default function CustomerHome({ navigation }) {
   const [search, setSearch] = useState('');
+  const [celebs, setCelebs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCelebs = async () => {
+      try {
+        const res = await api.get('celebs/list-celebs');
+        if (res.data.success) {
+          setCelebs(res.data.data || []);
+        } else {
+          console.warn('⚠️ Failed to fetch celebs:', res.data.message);
+        }
+      } catch (err) {
+        console.error('❌ Error fetching celebs:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCelebs();
+  }, []);
 
   const filteredCelebs = sampleCelebs.filter((celeb) =>
-    celeb.name.toLowerCase().includes(search.toLowerCase())
+    celeb.displayName.toLowerCase().includes(search.toLowerCase())
   );
 
-  const renderCard = (item, small = false) => (
+  const renderCard = (item) => (
     <TouchableOpacity
-      key={item.id}
-      style={[styles.card, small && styles.smallCard]}
+      key={item._id}
+      style={styles.card}
       onPress={() => navigation.navigate('CelebrityProfile', { celeb: item })}
     >
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      <Image
+        source={{
+          uri: item.picture
+            ? item.picture
+            : 'https://via.placeholder.com/150?text=No+Image',
+        }}
+        style={styles.avatar}
+      />
       <View style={styles.cardInfo}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.bio} numberOfLines={2}>{item.bio}</Text>
-        <Text style={styles.rating}>⭐ {item.rating}</Text>
+        <Text style={styles.name}>{item.displayName}</Text>
+        <Text style={styles.price}>
+          ${item.shoutout?.[0]?.price || '0'}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -120,12 +150,24 @@ export default function CustomerHome({ navigation }) {
           onChangeText={setSearch}
         />
 
-        {renderSection('Trending', filteredCelebs.slice(0, 4))}
-        {renderSection('Actors', filteredCelebs.filter((c) => c.category === 'Actor'))}
-        {renderSection('Musicians', filteredCelebs.filter((c) => c.category === 'Musician'))}
-        {renderSection('Athletes', filteredCelebs.filter((c) => c.category === 'Athlete'))}
-        {renderSection('Creators', filteredCelebs.filter((c) => c.category === 'Creator'))}
-        {renderSection('Religious Leaders', filteredCelebs.filter((c) => c.category === 'Religious Leader'))}
+        {filteredCelebs.slice(0, 4).length > 0 &&
+          renderSection('Trending', filteredCelebs.slice(0, 4))}
+
+        {filteredCelebs.filter((c) => c.category === 'Actor').length > 0 &&
+          renderSection('Actors', filteredCelebs.filter((c) => c.category === 'Actor'))}
+
+        {filteredCelebs.filter((c) => c.category === 'Musician').length > 0 &&
+          renderSection('Musicians', filteredCelebs.filter((c) => c.category === 'Musician'))}
+
+        {filteredCelebs.filter((c) => c.category === 'Athlete').length > 0 &&
+          renderSection('Athletes', filteredCelebs.filter((c) => c.category === 'Athlete'))}
+
+        {filteredCelebs.filter((c) => c.category === 'Creator').length > 0 &&
+          renderSection('Creators', filteredCelebs.filter((c) => c.category === 'Creator'))}
+
+        {filteredCelebs.filter((c) => c.category === 'Religious Leader').length > 0 &&
+          renderSection('Religious Leaders', filteredCelebs.filter((c) => c.category === 'Religious Leader'))}
+
       </View>
     </ScrollView>
   );
@@ -209,6 +251,7 @@ const styles = StyleSheet.create({
   cardInfo: {
     padding: 8,
     alignItems: 'center',
+    backgroundColor: Colors.secondary,
   },
   name: {
     fontSize: 14,

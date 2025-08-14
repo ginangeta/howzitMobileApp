@@ -27,69 +27,66 @@ export default function UnifiedAuthScreen({ navigation }) {
   const [specialization, setSpecialization] = useState('birthday');
   const [isCelebrity, setIsCelebrity] = useState(false);
 
-  const { setUserType, setUserData, setIsLoggedIn } = useLogin();
+    const { userType, setUserType, setUserData } = useLogin();
+
+  // const { setUserType, setUserData, setIsLoggedIn } = useLogin();
 
   useEffect(() => {
-    setUserType(isCelebrity ? 'celeb' : 'fan');
+    setUserType(isCelebrity ? 'celebrity' : 'customer');
   }, [setUserType, isCelebrity]);
 
-  const handleContinue = async () => {
+  // const handleContinue = async () => {
+  //   if (!phone.trim() || !password.trim()) {
+  //     Alert.alert('Missing Info', 'Please enter both phone number and password.');
+  //     return;
+  //   }
+
+  //   try {
+  //     const response = await api.post('user/login-user', {
+  //       userPhone: phone.trim(),
+  //       userPassword: password.trim(),
+  //     });
+
+  //     if (response.data.success) {
+  //       // ✅ Save data to context if needed
+  //       setIsLoggedIn(true);
+  //       setUserData(response.data.data.user);
+  //       setUserType(response.data.data.user.userType === 'celeb' ? 'celebrity' : 'customer');
+  //       await AsyncStorage.setItem('token', response.data.data.token);
+
+  //       // ✅ Navigate to OTP verification
+  //       navigation.navigate('OTPVerification', {
+  //         phone: phone.trim(),
+  //         otp: response.data.data.user.emailVerification?.otpCode, // optional
+  //         token: response.data.data.token, // optional
+  //       });
+  //     } else {
+  //       Alert.alert('Login Failed', response.data.message || 'Invalid credentials');
+  //     }
+  //   } catch (error) {
+  //     console.error(error);
+  //     Alert.alert(
+  //       'Login Error',
+  //       error.response?.data?.message || 'Unable to log in. Please try again.'
+  //     );
+  //   }
+  // };
+
+   const handleContinue = () => {
     if (!phone.trim()) {
       Alert.alert('Missing Info', 'Please enter your phone number.');
       return;
     }
 
-    if (!isRegistering) {
-      // Login Flow
-      if (!password.trim()) {
-        Alert.alert('Missing Info', 'Please enter your password.');
-        return;
-      }
-      try {
-        const res = await api.post('user/login-user', {
-          userPhone: phone,
-          userPassword: password,
-        });
-
-        const data = res.data;
-        console.log(data);
-
-        if (data.success) {
-          const token = data.data.token;
-          const user = data.data.user;
-          console.log('Token', token);
-          console.log('User', user.userType);
-          await AsyncStorage.setItem('userToken', token);
-          await AsyncStorage.setItem('userInfo', JSON.stringify(user));
-
-
-          setUserType(user.userType);
-          setIsLoggedIn(true);
-
-          if (user.userType === 'celeb') {
-            navigation.reset({ index: 0, routes: [{ name: 'CelebrityDashboard' }] });
-          } else {
-            navigation.reset({ index: 0, routes: [{ name: 'CustomerHome' }] });
-          }
-        } else {
-          Alert.alert('Login Failed', res.data.message || 'Unable to login.');
-        }
-      } catch (err) {
-        Alert.alert('Error', err.response?.data?.message || 'Something went wrong.');
-      }
-      return;
-    }
-
-    // Registration Flow
-    if (isRegistering && isCelebrity && !name.trim()) {
+    if (isRegistering && userType === 'celebrity' && !name.trim()) {
       Alert.alert('Missing Info', 'Please enter your full name.');
       return;
     }
 
-    const userData = { phone, userType: isCelebrity ? 'celeb' : 'fan' };
+    const userData = { phone, userType };
     if (isRegistering) {
       userData.name = name;
-      if (isCelebrity) {
+      if (userType === 'celebrity') {
         userData.specialization = specialization;
       }
     }
@@ -97,7 +94,7 @@ export default function UnifiedAuthScreen({ navigation }) {
     setUserData(userData);
     navigation.navigate('OTPVerification');
   };
-
+  
   const handleSignupRedirect = () => {
     setIsRegistering(true);
   };

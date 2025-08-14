@@ -6,6 +6,7 @@ import UnifiedAuthScreen from '../screens/auth/UnifiedAuthScreen';
 import OTPVerification from '../screens/auth/OTPVerification';
 
 import CustomerHome from '../screens/customer/CustomerHome';
+import CelebrityList from '../screens/customer/CelebrityList';
 import CelebrityProfile from '../screens/customer/CelebrityProfile';
 import ShoutoutRequest from '../screens/customer/ShoutoutRequest';
 import StatusTracker from '../screens/customer/StatusTracker';
@@ -36,6 +37,7 @@ export default function AuthNavigator() {
         <>
           <Stack.Screen name="CustomerTabs" component={CustomerTabs} />
           <Stack.Screen name="CustomerHome" component={CustomerHome} />
+          <Stack.Screen name="CelebrityList" component={CelebrityList} />
           <Stack.Screen name="CelebrityProfile" component={CelebrityProfile} />
           <Stack.Screen name="ShoutoutRequest" component={ShoutoutRequest} />
           <Stack.Screen name="StatusTracker" component={StatusTracker} />

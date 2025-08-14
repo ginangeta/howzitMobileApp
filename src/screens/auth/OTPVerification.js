@@ -26,7 +26,7 @@ export default function OTPVerification({ navigation }) {
           text: 'Continue',
           onPress: () => {
             setIsLoggedIn(true);
-            if (userType === 'celebrity') {
+            if (userType === 'celeb') {
               navigation.navigate('CelebritySetup');
             } else {
               navigation.navigate('CustomerTabs');

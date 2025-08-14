@@ -34,7 +34,7 @@ export default function OnboardingScreen({ onDone }) {
         loop={false}
         showsButtons={false}
         dotColor="#ffd5b5"
-        activeDotColor={Colors.primary || '#ff6600'}
+        activeDotColor={Colors.primary || '#E67E22'}
         >
         {slides.map((slide, index) => (
             <View key={slide.key} style={styles.slide}>

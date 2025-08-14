@@ -14,41 +14,47 @@ import Colors from '../../constants/Colors';
 const followedCelebs = [
   {
     id: '1',
-    name: 'DJ Zinhle',
-    avatar: 'https://randomuser.me/api/portraits/men/70.jpg',
-    specialization: 'Birthday shoutouts, Motivational messages',
-    previewVideos: [
-      { id: 'v1', uri: 'https://placekitten.com/200/200' },
-      { id: 'v2', uri: 'https://placekitten.com/201/200' },
-      { id: 'v3', uri: 'https://placekitten.com/202/200' },
-    ],
+    displayName: 'DJ Zinhle',
+    category: 'Musician',
+    price: 25,
+    deliveryTime: '2 days',
+    rating: 4.8,
+    shoutoutsCount: 142,
+    picture: 'https://randomuser.me/api/portraits/men/70.jpg',
+    bio: 'Top DJ and businesswoman ready to hype you up!',
   },
   {
     id: '2',
-    name: 'Cassper Nyovest',
-    avatar: 'https://randomuser.me/api/portraits/men/54.jpg',
-    specialization: 'Music shoutouts, Promotions',
-    previewVideos: [
-      { id: 'v1', uri: 'https://placekitten.com/210/200' },
-      { id: 'v2', uri: 'https://placekitten.com/211/200' },
-    ],
+    displayName: 'Cassper Nyovest',
+    category: 'Musician',
+    price: 40,
+    deliveryTime: '1 day',
+    rating: 4.6,
+    shoutoutsCount: 220,
+    picture: 'https://randomuser.me/api/portraits/men/54.jpg',
+    bio: 'South African rap legend. Bringing the hype to your screen!',
   },
 ];
 
 export default function FollowingScreen({ navigation }) {
   const renderCelebCard = ({ item }) => (
-    <View style={styles.celebCard}>
-      <View style={styles.headerRow}>
-        <Image source={{ uri: item.avatar }} style={styles.avatar} />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.specialization} numberOfLines={1}>
-            {item.specialization}
-          </Text>
+    <View>
+      <TouchableOpacity
+        key={item._id}
+        style={styles.celebCard}
+        onPress={() => navigation.navigate('CelebrityProfile', { celeb: item })}
+      >
+        <View style={styles.headerRow}>
+          <Image source={{ uri: item.picture }} style={styles.avatar} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.name}>{item.displayName}</Text>
+            <Text style={styles.specialization} numberOfLines={1}>
+              {item.bio}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <ScrollView
+        {/* <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.previewScroll}
@@ -60,7 +66,8 @@ export default function FollowingScreen({ navigation }) {
             style={styles.previewThumb}
           />
         ))}
-      </ScrollView>
+      </ScrollView> */}
+      </TouchableOpacity>
     </View>
   );
 
