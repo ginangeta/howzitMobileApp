@@ -8,14 +8,16 @@ import {
   ScrollView,
   Image,
   ToastAndroid,
-  Platform
+  Platform,
+  FlatList,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Video from 'react-native-video';
 import * as Progress from 'react-native-progress';
+import Colors from '../../constants/Colors';
 
-export default function RequestDetails() {
+export default function RequestDetails({ navigation }) {
   const [accepted, setAccepted] = useState(false);
   const [media, setMedia] = useState(null);
   const [submitted, setSubmitted] = useState(false);
@@ -36,36 +38,34 @@ export default function RequestDetails() {
     userNote: 'Please say it with excitement and mention his name clearly.',
   };
 
-  useEffect(() => {
-    const deadline = new Date(request.deadline); // moved inside useEffect
+  const recentShoutouts = [
+    { id: '1', type: 'video', name: 'Nina', message: 'Happy Birthday Nina! 🎉', thumbnail: require('../../../assets/images/sample_video_thumb.png') },
+    { id: '2', type: 'audio', name: 'James', message: 'Encouragement message', thumbnail: require('../../../assets/images/sample_audio_thumb.png') },
+    { id: '3', type: 'video', name: 'Emma', message: 'Congrats Emma!', thumbnail: require('../../../assets/images/sample_video_thumb.png') },
+  ];
 
+  useEffect(() => {
+    const deadline = new Date(request.deadline);
     const interval = setInterval(() => {
       const now = new Date();
       const diff = deadline - now;
-
       if (diff <= 0) {
         setCountdown('Expired');
         clearInterval(interval);
         return;
       }
-
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
       const minutes = Math.floor((diff / (1000 * 60)) % 60);
       const seconds = Math.floor((diff / 1000) % 60);
-
       setCountdown(`${days}d ${hours}h ${minutes}m ${seconds}s`);
     }, 1000);
-
     return () => clearInterval(interval);
-  }, [request.deadline]); // only re-run if deadline string changes
+  }, [request.deadline]);
 
   const pickMedia = () => {
     launchImageLibrary(
-      {
-        mediaType: 'video',
-        quality: 1,
-      },
+      { mediaType: 'video', quality: 1 },
       (response) => {
         if (response.didCancel) return;
         if (response.errorCode) {
@@ -123,19 +123,31 @@ export default function RequestDetails() {
     return '🕐 Pending';
   };
 
+  const renderShoutoutItem = ({ item }) => (
+    <View style={styles.shoutoutCard}>
+      <Image source={item.thumbnail} style={styles.shoutoutThumb} />
+      <Text style={styles.shoutoutName}>{item.name}</Text>
+      <Text style={styles.shoutoutMsg} numberOfLines={2}>{item.message}</Text>
+    </View>
+  );
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Image
-        source={require('../../../assets/images/abstract_bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      />
+      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <Icon name="arrow-back-outline" size={24} color={Colors.secondary} />
+      </TouchableOpacity>
+
       <Text style={styles.heading}>Shoutout Request</Text>
       <Text style={styles.subHeading}>
-        Personalize your video for <Text style={{ fontWeight: 'bold' }}>{request.user}</Text>
+        Personalize your video for <Text style={{ fontWeight: '700' }}>{request.user}</Text>
       </Text>
 
-      <View style={styles.card}>
+      {/* Modern Details Section */}
+      <View style={styles.detailsCard}>
+        <View style={styles.detailsHeader}>
+          <Icon name="information-circle-outline" size={22} color={Colors.primary} />
+          <Text style={styles.detailsTitle}>Request Details</Text>
+        </View>
         <DetailRow label="Request ID" value={request.id} />
         <DetailRow label="From" value={request.celeb} />
         <DetailRow label="To" value={request.user} />
@@ -150,7 +162,7 @@ export default function RequestDetails() {
       </View>
 
       {!accepted && !submitted && (
-        <TouchableOpacity style={styles.acceptBtn} onPress={handleSubmit}>
+        <TouchableOpacity style={styles.acceptBtn} onPress={() => setAccepted(true)}>
           <Text style={styles.btnText}>Accept Request</Text>
         </TouchableOpacity>
       )}
@@ -158,34 +170,24 @@ export default function RequestDetails() {
       {accepted && !submitted && (
         <View style={styles.uploadSection}>
           <Text style={styles.uploadLabel}>Upload Your Shoutout Video</Text>
-
           <TouchableOpacity style={styles.uploadBtn} onPress={pickMedia}>
             <Icon name="cloud-upload-outline" size={20} color="#fff" />
-            <Text style={[styles.btnText, { marginLeft: 8 }]}>
-              {media ? 'Change File' : 'Choose File'}
-            </Text>
+            <Text style={[styles.btnText, { marginLeft: 8 }]}>{media ? 'Change File' : 'Choose File'}</Text>
           </TouchableOpacity>
 
           {media && (
             <View style={styles.preview}>
-              <Video
-                source={{ uri: media.uri }}
-                style={styles.video}
-                resizeMode="cover"
-                paused={true}
-              />
-              <Text style={styles.previewText}>
-                {media.fileName || 'Video selected'}
-              </Text>
+              <Video source={{ uri: media.uri }} style={styles.video} resizeMode="cover" paused />
+              <Text style={styles.previewText}>{media.fileName || 'Video selected'}</Text>
             </View>
           )}
 
           {uploading ? (
             <Progress.Bar
               progress={uploadProgress}
-              width={200}
-              color="#4CAF50"
-              animated={true}
+              width={220}
+              color={Colors.primary}
+              animated
               style={{ marginTop: 20 }}
             />
           ) : (
@@ -197,30 +199,49 @@ export default function RequestDetails() {
         </View>
       )}
 
-      {submitted && (
-        <Text style={styles.confirmationText}>
-          ✅ Your shoutout has been submitted. Thanks!
-        </Text>
-      )}
+      {submitted && <Text style={styles.confirmationText}>✅ Your shoutout has been submitted. Thanks!</Text>}
+
+      <Text style={styles.recentHeading}>Recent Shoutouts</Text>
+      <FlatList
+        data={recentShoutouts}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={item => item.id}
+        renderItem={renderShoutoutItem}
+        contentContainerStyle={{ paddingVertical: 12 }}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.08,
-  },
   container: {
     padding: 24,
-    paddingBottom: 20,
-    backgroundColor: '#fff9f5',
+    paddingBottom: 40,
+    backgroundColor: '#F7F7F7',
+  },
+  backBtn: {
+    position: 'absolute',
+    top: 44,
+    left: 18,
+    zIndex: 20,
+    backgroundColor: Colors.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.textSecondary,
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 6,
   },
   heading: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#ff6600',
-    marginBottom: 10,
+    color: Colors.primary,
+    marginBottom: 6,
     marginTop: 50,
     textAlign: 'center',
   },
@@ -230,38 +251,54 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: 'center',
   },
-  card: {
+  detailsCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 24,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  detailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  detailsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginLeft: 8,
   },
   detailRow: {
-    marginBottom: 10,
+    marginBottom: 12,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#444',
+    color: '#666',
   },
   value: {
     fontSize: 15,
-    fontWeight: '400',
+    fontWeight: '500',
     color: '#222',
     marginTop: 2,
   },
   acceptBtn: {
-    backgroundColor: '#ff6600',
-    paddingVertical: 12,
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
     paddingHorizontal: 32,
-    borderRadius: 12,
+    borderRadius: 25,
     marginBottom: 24,
     alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   btnText: {
     color: '#fff',
@@ -281,26 +318,26 @@ const styles = StyleSheet.create({
   uploadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3399ff',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    backgroundColor: Colors.accentGreen,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
     marginBottom: 16,
   },
   submitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
     marginTop: 12,
   },
   video: {
-    width: 250,
-    height: 250,
-    borderRadius: 12,
-    marginTop: 10,
+    width: 260,
+    height: 260,
+    borderRadius: 16,
+    marginTop: 12,
     backgroundColor: '#000',
   },
   preview: {
@@ -313,9 +350,45 @@ const styles = StyleSheet.create({
   },
   confirmationText: {
     marginTop: 30,
-    color: '#28a745',
+    color: Colors.accentGreen,
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  recentHeading: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginTop: 30,
+    marginBottom: 12,
+  },
+  shoutoutCard: {
+    width: 150,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 12,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  shoutoutThumb: {
+    width: '100%',
+    height: 80,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#ccc',
+  },
+  shoutoutName: {
+    fontWeight: '600',
+    fontSize: 14,
+    color: '#333',
+  },
+  shoutoutMsg: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
 });

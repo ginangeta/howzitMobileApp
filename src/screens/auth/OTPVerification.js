@@ -21,7 +21,7 @@ export default function OTPVerification({ navigation }) {
 
   const verifyOTP = () => {
     if (otp.trim().length === 4) {
-      Alert.alert('✅ Success', 'OTP Verified Successfully', [
+      Alert.alert('Success', 'OTP Verified Successfully', [
         {
           text: 'Continue',
           onPress: () => {
@@ -35,7 +35,7 @@ export default function OTPVerification({ navigation }) {
         },
       ]);
     } else {
-      Alert.alert('⚠️ Invalid OTP', 'Please enter the 4-digit code sent to your phone.');
+      Alert.alert('Invalid OTP', 'Please enter the 4-digit code sent to your phone.');
     }
   };
 
@@ -47,15 +47,16 @@ export default function OTPVerification({ navigation }) {
         resizeMode="cover"
       />
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.cardWrapper}
       >
         <View style={styles.card}>
-          <Text style={styles.title}>🔐 Enter OTP</Text>
+          <Text style={styles.title}>Enter OTP</Text>
           <Text style={styles.subtitle}>
-            We sent a 4-digit code to {' '}
-            <Text style={{ fontWeight: '600', color: Colors.accentBlue }}>
+            We sent a 4-digit code to{' '}
+            <Text style={styles.phoneHighlight}>
               {userData?.phone || 'your number'}
             </Text>
           </Text>
@@ -67,16 +68,16 @@ export default function OTPVerification({ navigation }) {
             value={otp}
             onChangeText={setOtp}
             placeholder="0000"
-            placeholderTextColor="#aaa"
+            placeholderTextColor={Colors.textSecondary + '66'}
           />
 
           <TouchableOpacity
             style={[styles.button, otp.trim().length < 4 && styles.buttonDisabled]}
             onPress={verifyOTP}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
             disabled={otp.trim().length < 4}
           >
-            <Text style={styles.buttonText}>Verify</Text>
+            <Text style={styles.buttonText}>VerifY</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -87,13 +88,13 @@ export default function OTPVerification({ navigation }) {
 const styles = StyleSheet.create({
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.06,
+    opacity: 0.04,
   },
   container: {
     flex: 1,
     paddingTop: 60,
     justifyContent: 'center',
-    backgroundColor: '#fff9f5',
+    backgroundColor: Colors.secondary,
   },
   cardWrapper: {
     flex: 1,
@@ -102,65 +103,61 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
+    backgroundColor: Colors.textPrimary,
+    borderRadius: 20,
     paddingVertical: 32,
     paddingHorizontal: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
-    color: Colors.primary,
+    color: Colors.textSecondary,
     marginBottom: 12,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
-    color: '#666',
+    color: Colors.textSecondary + '99',
     marginBottom: 28,
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  phoneHighlight: {
+    fontWeight: '600',
+    color: Colors.accentBlue,
   },
   input: {
-    borderWidth: 1.2,
+    borderWidth: 1,
     borderColor: Colors.primary,
     paddingVertical: Platform.OS === 'ios' ? 14 : 12,
     paddingHorizontal: 20,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.textPrimary,
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: Colors.textSecondary,
     textAlign: 'center',
     letterSpacing: 10,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
-    elevation: 3,
   },
   button: {
     backgroundColor: Colors.primary,
     paddingVertical: 16,
-    borderRadius: 50,
+    borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: Colors.textSecondary + '33',
   },
   buttonText: {
-    color: '#fff',
+    color: Colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
+    textTransform: 'uppercase',
   },
 });

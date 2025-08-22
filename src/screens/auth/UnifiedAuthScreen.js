@@ -12,6 +12,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   Switch,
+  Modal
 } from 'react-native';
 import { useLogin } from '../../context/LoginContext';
 import { Picker } from '@react-native-picker/picker';
@@ -26,53 +27,16 @@ export default function UnifiedAuthScreen({ navigation }) {
   const [name, setName] = useState('');
   const [specialization, setSpecialization] = useState('birthday');
   const [isCelebrity, setIsCelebrity] = useState(false);
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otp, setOtp] = useState('');
 
-    const { userType, setUserType, setUserData } = useLogin();
-
-  // const { setUserType, setUserData, setIsLoggedIn } = useLogin();
+  const { userType, setUserType, setUserData, setIsLoggedIn } = useLogin();
 
   useEffect(() => {
     setUserType(isCelebrity ? 'celebrity' : 'customer');
   }, [setUserType, isCelebrity]);
 
-  // const handleContinue = async () => {
-  //   if (!phone.trim() || !password.trim()) {
-  //     Alert.alert('Missing Info', 'Please enter both phone number and password.');
-  //     return;
-  //   }
-
-  //   try {
-  //     const response = await api.post('user/login-user', {
-  //       userPhone: phone.trim(),
-  //       userPassword: password.trim(),
-  //     });
-
-  //     if (response.data.success) {
-  //       // ✅ Save data to context if needed
-  //       setIsLoggedIn(true);
-  //       setUserData(response.data.data.user);
-  //       setUserType(response.data.data.user.userType === 'celeb' ? 'celebrity' : 'customer');
-  //       await AsyncStorage.setItem('token', response.data.data.token);
-
-  //       // ✅ Navigate to OTP verification
-  //       navigation.navigate('OTPVerification', {
-  //         phone: phone.trim(),
-  //         otp: response.data.data.user.emailVerification?.otpCode, // optional
-  //         token: response.data.data.token, // optional
-  //       });
-  //     } else {
-  //       Alert.alert('Login Failed', response.data.message || 'Invalid credentials');
-  //     }
-  //   } catch (error) {
-  //     console.error(error);
-  //     Alert.alert(
-  //       'Login Error',
-  //       error.response?.data?.message || 'Unable to log in. Please try again.'
-  //     );
-  //   }
-  // };
-
-   const handleContinue = () => {
+  const handleContinue = () => {
     if (!phone.trim()) {
       Alert.alert('Missing Info', 'Please enter your phone number.');
       return;
@@ -92,20 +56,32 @@ export default function UnifiedAuthScreen({ navigation }) {
     }
 
     setUserData(userData);
-    navigation.navigate('OTPVerification');
+    // navigation.navigate('OTPVerification');
+    setShowOTPModal(true);
   };
-  
+
   const handleSignupRedirect = () => {
     setIsRegistering(true);
   };
 
+  const handleVerifyOTP = () => {
+    if (!otp.trim()) {
+      Alert.alert('Missing OTP', 'Please enter the OTP sent to your phone.');
+      return;
+    }
+    // TODO: call your OTP verification API here
+    Alert.alert('Success', 'OTP Verified Successfully!');
+    setShowOTPModal(false);
+    setIsLoggedIn(true);
+    if (userType === 'celeb') {
+      navigation.navigate('CelebritySetup');
+    } else {
+      navigation.navigate('CustomerTabs');
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../../../assets/images/abstract_bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      />
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -122,18 +98,17 @@ export default function UnifiedAuthScreen({ navigation }) {
           </Text>
         </View>
 
-        <View style={styles.cardless}>
+        <View style={styles.form}>
           <TextInput
             placeholder="+263 7XXXXXXXX"
             keyboardType="phone-pad"
             value={phone}
             onChangeText={setPhone}
             style={styles.input}
-            placeholderTextColor="#aaa"
+            placeholderTextColor={Colors.textSecondary + '99'}
             maxLength={13}
           />
 
-          {/* Password for Login */}
           {!isRegistering && (
             <TextInput
               placeholder="Password"
@@ -141,7 +116,7 @@ export default function UnifiedAuthScreen({ navigation }) {
               value={password}
               onChangeText={setPassword}
               style={styles.input}
-              placeholderTextColor="#aaa"
+              placeholderTextColor={Colors.textSecondary + '99'}
             />
           )}
 
@@ -152,7 +127,7 @@ export default function UnifiedAuthScreen({ navigation }) {
                 value={name}
                 onChangeText={setName}
                 style={styles.input}
-                placeholderTextColor="#aaa"
+                placeholderTextColor={Colors.textSecondary + '99'}
               />
 
               <Text style={styles.label}>User Type</Text>
@@ -202,7 +177,7 @@ export default function UnifiedAuthScreen({ navigation }) {
           <TouchableOpacity
             style={[styles.primaryButton, !phone.trim() && styles.buttonDisabled]}
             onPress={handleContinue}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
             disabled={!phone.trim()}
           >
             <Text style={styles.buttonText}>
@@ -216,57 +191,150 @@ export default function UnifiedAuthScreen({ navigation }) {
             {isRegistering ? 'Already have an account?' : 'Do you have an account?'}
           </Text>
 
-          <TouchableOpacity style={styles.signUpButton} onPress={handleSignupRedirect}>
-            <Text style={styles.signUpText}>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleSignupRedirect}>
+            <Text style={styles.secondaryButtonText}>
               {isRegistering ? 'Login' : 'Sign Up'}
             </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* OTP Modal */}
+      <Modal
+        visible={showOTPModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowOTPModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Verify Your Number</Text>
+            <Text style={styles.modalSubtitle}>
+              Enter the 6-digit code sent to {phone}
+            </Text>
+
+            <TextInput
+              placeholder="123456"
+              keyboardType="number-pad"
+              value={otp}
+              onChangeText={setOtp}
+              style={styles.otpInput}
+              placeholderTextColor={Colors.textSecondary + '66'}
+              maxLength={6}
+            />
+
+            <TouchableOpacity style={styles.primaryButton} onPress={handleVerifyOTP}>
+              <Text style={styles.buttonText}>Verify</Text>
+            </TouchableOpacity>
+
+            <View style={styles.resendRow}>
+              <Text style={styles.resendText}>Didn't receive the code?</Text>
+              <TouchableOpacity>
+                <Text style={styles.resendButton}>Resend OTP</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => setShowOTPModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <Text style={styles.modalCloseText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: { ...StyleSheet.absoluteFillObject, opacity: 0.06 },
-  container: { flex: 1, paddingTop: 60, backgroundColor: '#fff9f5' },
-  wrapper: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 40 },
-  content: { alignItems: 'center' },
-  logo: { width: 120, height: 120, marginBottom: 6 },
-  tagline: { fontSize: 14, textAlign: 'center', color: '#333', marginBottom: 24, paddingHorizontal: 20 },
-  cardless: { padding: 28, backgroundColor: 'transparent' },
+  container: { flex: 1, backgroundColor: Colors.secondary, paddingTop: 60 },
+  wrapper: { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
+  content: { alignItems: 'center', marginBottom: 40 },
+  logo: { width: 100, height: 100, marginBottom: 12 },
+  tagline: { fontSize: 16, textAlign: 'center', color: Colors.textSecondary, fontWeight: '500', lineHeight: 22 },
+  form: { paddingVertical: 16 },
   input: {
-    borderWidth: 1.2,
-    borderColor: Colors.primary,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 12,
-    paddingHorizontal: 20,
-    borderRadius: 50,
-    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: Colors.textPrimary,
     fontSize: 16,
-    color: '#000',
+    color: Colors.textSecondary,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  label: { fontSize: 14, color: '#555', marginBottom: 6, fontWeight: '600', marginTop: 10 },
+  label: { fontSize: 14, color: Colors.textSecondary, fontWeight: '600', marginBottom: 8 },
   pickerWrapper: {
-    borderWidth: 1.2,
-    borderColor: Colors.primary,
-    borderRadius: 50,
-    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    backgroundColor: Colors.textPrimary,
     marginBottom: 16,
     paddingHorizontal: Platform.OS === 'ios' ? 8 : 4,
   },
   switchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
-  switchLabel: { fontSize: 14, color: '#444', fontWeight: '500' },
-  primaryButton: { backgroundColor: Colors.primary, paddingVertical: 16, borderRadius: 50, alignItems: 'center', marginTop: 8 },
+  switchLabel: { fontSize: 14, color: Colors.textSecondary, fontWeight: '500' },
+  primaryButton: { backgroundColor: Colors.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   buttonDisabled: { backgroundColor: '#ccc' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  divider: { height: 1, backgroundColor: '#ddd', marginVertical: 20 },
-  signInLabel: { textAlign: 'center', color: '#666', marginBottom: 10 },
-  signUpButton: { backgroundColor: '#f36f1e', paddingVertical: 14, borderRadius: 30, alignItems: 'center' },
-  signUpText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  buttonText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700', textTransform: 'uppercase' },
+  divider: { height: 1, backgroundColor: '#E0E0E0', marginVertical: 20 },
+  signInLabel: { textAlign: 'center', color: Colors.textSecondary, marginBottom: 10 },
+  secondaryButton: { borderWidth: 1, borderColor: Colors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  secondaryButtonText: { color: Colors.primary, fontWeight: '700', fontSize: 16 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: '#00000080',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: Colors.textPrimary,
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary + '99',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  otpInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    fontSize: 18,
+    color: Colors.textSecondary,
+    marginBottom: 24,
+    textAlign: 'center',
+    backgroundColor: '#F8F8F8',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 8,
+  },
+  resendText: { fontSize: 14, color: Colors.textSecondary + '99' },
+  resendButton: { fontSize: 14, color: Colors.primary, fontWeight: '600' },
+  modalCloseButton: { marginTop: 24 },
+  modalCloseText: { color: Colors.primary, textAlign: 'center', fontWeight: '600' },
 });

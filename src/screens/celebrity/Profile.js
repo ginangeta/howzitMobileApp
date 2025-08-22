@@ -1,24 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
   Image,
   ScrollView,
-  TouchableOpacity,
   StatusBar,
   Animated,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SwipeListView } from 'react-native-swipe-list-view';
 import Colors from '../../constants/Colors';
 import { useLogin } from '../../context/LoginContext';
 
-export default function Profile({ route, navigation }) {
+export default function WalletScreen({ navigation }) {
   const { setIsLoggedIn } = useLogin();
-  const celebProfile = route?.params?.celebProfile || {
+  const [animatedBalance] = useState(new Animated.Value(0));
+  const [displayBalance, setDisplayBalance] = useState(0);
+  const balance = 5924.5;
+
+  const celebProfile = {
     name: 'Gina Wambui',
     bio: 'Award-winning entertainer passionate about bringing joy to fans through personalized shoutouts.',
     avatar: 'https://i.pravatar.cc/100?img=4',
@@ -27,340 +30,179 @@ export default function Profile({ route, navigation }) {
     price: 50.0,
     shoutoutsDone: 124,
     rating: 4.8,
-    balance: 200.0,
+    balance: 5924.0,
   };
 
-  const [recentShoutouts, setRecentShoutouts] = useState([
-    { id: '1', recipient: 'James', message: 'Happy Birthday 🎉' },
-    { id: '2', recipient: 'Nina', message: 'You got this 💪' },
-    { id: '3', recipient: 'Max', message: 'Congratulations! 🏆' },
-  ]);
+  useEffect(() => {
+    const listener = animatedBalance.addListener(({ value }) => setDisplayBalance(value));
+    Animated.timing(animatedBalance, {
+      toValue: balance,
+      duration: 1200,
+      useNativeDriver: false,
+    }).start();
+    return () => animatedBalance.removeListener(listener);
+  }, [animatedBalance, balance]);
 
-  const feedback = [
-    { stars: 5, count: 82 },
-    { stars: 4, count: 30 },
-    { stars: 3, count: 8 },
-    { stars: 2, count: 3 },
-    { stars: 1, count: 1 },
+  const walletMenus = [
+    { id: 'withdraw', title: 'Withdraw Funds', icon: 'cash-outline', color: Colors.accentGreen, screen: 'Withdraw' },
+    { id: 'transactions', title: 'Transactions', icon: 'list-outline', color: Colors.accentBlue, screen: 'Transactions' },
+    { id: 'settings', title: 'Settings', icon: 'settings-outline', color: Colors.textSecondary, screen: 'Settings' },
   ];
 
-  const renderStars = (rating) => {
-    const fullStars = Math.floor(rating);
-    const halfStar = rating % 1 >= 0.5;
-    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
-    return (
-      <Text style={{ fontSize: 16, color: '#f6b100', marginTop: 2 }}>
-        {'★'.repeat(fullStars)}
-        {halfStar ? '½' : ''}
-        {'☆'.repeat(emptyStars)}
-      </Text>
-    );
-  };
-
-  const renderShoutoutItem = ({ item, index }) => {
-    const fadeAnim = new Animated.Value(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      delay: index * 150,
-      useNativeDriver: true,
-    }).start();
-
-    return (
-      <Animated.View style={{ opacity: fadeAnim }}>
-        <View style={styles.shoutoutCard}>
-          <Text style={styles.shoutoutText}>To: {item.recipient}</Text>
-          <Text style={styles.shoutoutMessage}>{item.message}</Text>
-        </View>
-      </Animated.View>
-    );
-  };
-
-  const renderHiddenItem = (data) => (
-    <TouchableOpacity
-      style={styles.shoutoutDelete}
-      onPress={() => {
-        const updated = recentShoutouts.filter((s) => s.id !== data.item.id);
-        setRecentShoutouts(updated);
-      }}
-    >
-      <Icon name="trash" size={20} color="#fff" />
-    </TouchableOpacity>
-  );
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Image
-        source={require('../../../assets/images/abstract_bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      />
+    <View style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-      {/* Profile Header */}
-      <View style={styles.header}>
-        <Image source={{ uri: celebProfile.avatar }} style={styles.avatar} />
-        <TouchableOpacity
-          onPress={() => navigation.navigate('EditProfile', { celebProfile })}
-          style={styles.editIcon}
+      {/* Back Button */}
+      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <Icon name="arrow-back-outline" size={28} color={Colors.textPrimary} />
+      </TouchableOpacity>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <LinearGradient
+          colors={[Colors.primary || '#ff6600', Colors.accentOrange || '#ff914d']}
+          style={styles.header}
         >
-          <Icon name="create-outline" size={20} color="#555" />
+          <Image
+            source={{ uri: 'https://merry-strudel-581da2.netlify.app/assets/img/doctor-grid/felista.jpg' }}
+            style={styles.avatar}
+          />
+          <Text style={styles.username}>Gina Wambui</Text>
+          <Text style={styles.userEmail}>gina@example.com</Text>
+        </LinearGradient>
+
+        {/* Balance Card */}
+        <View style={styles.balanceCard}>
+          <Text style={styles.balanceLabel}>Available Balance</Text>
+          <Text style={styles.balanceValue}>
+            ZWG {displayBalance.toFixed(2)}
+          </Text>
+        </View>
+
+        {/* Wallet Menu */}
+        <View style={styles.menuSection}>
+          {walletMenus.map((menu) => (
+            <TouchableOpacity
+              key={menu.id}
+              style={styles.menuCard}
+              onPress={() => navigation.navigate(menu.screen, { balance: displayBalance, celebProfile })}
+            >
+              <View style={[styles.iconBox, { backgroundColor: menu.color }]}>
+                <Icon name={menu.icon} size={22} color="#fff" />
+              </View>
+              <Text style={styles.menuText}>{menu.title}</Text>
+              <Icon name="chevron-forward-outline" size={20} color={Colors.textPrimary} />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Logout */}
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={async () => {
+            await AsyncStorage.removeItem('userToken');
+            await AsyncStorage.removeItem('userInfo');
+            setIsLoggedIn(false);
+            navigation.reset({ index: 0, routes: [{ name: 'UnifiedLogin' }] });
+          }}
+        >
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
-      </View>
-
-      <Text style={styles.name}>{celebProfile.name}</Text>
-      {renderStars(celebProfile.rating)}
-      <Text style={styles.bio}>{celebProfile.bio}</Text>
-
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Icon name="star" size={20} color="#f6b100" />
-          <Text style={styles.statText}>{celebProfile.rating} Rating</Text>
-        </View>
-        <View style={styles.statItem}>
-          <MaterialIcon name="play-circle-filled" size={20} color="#00b894" />
-          <Text style={styles.statText}>{celebProfile.shoutoutsDone} Shoutouts</Text>
-        </View>
-      </View>
-
-      <View style={styles.detailBox}>
-        <Text style={styles.label}>Available Balance</Text>
-        <Text style={styles.value}>${celebProfile.balance.toFixed(2)}</Text>
-      </View>
-      <View style={styles.detailBox}>
-        <Text style={styles.label}>Delivery Time</Text>
-        <Text style={styles.value}>{celebProfile.deliveryTime}</Text>
-      </View>
-      <View style={styles.detailBox}>
-        <Text style={styles.label}>Accepted Types</Text>
-        <Text style={styles.value}>{celebProfile.acceptedTypes.join(', ')}</Text>
-      </View>
-      <View style={styles.detailBox}>
-        <Text style={styles.label}>Price per Shoutout</Text>
-        <Text style={styles.value}>${celebProfile.price.toFixed(2)}</Text>
-      </View>
-
-      {/* Recent Shoutouts */}
-      <Text style={styles.sectionTitle}>Recent Shoutouts</Text>
-      <SwipeListView
-        horizontal
-        data={recentShoutouts}
-        keyExtractor={(item) => item.id}
-        renderItem={renderShoutoutItem}
-        renderHiddenItem={renderHiddenItem}
-        rightOpenValue={-60}
-        disableRightSwipe
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 10 }}
-      />
-
-      {/* Feedback Summary */}
-      <Text style={styles.sectionTitle}>Feedback Summary</Text>
-      <View style={styles.feedbackContainer}>
-        {feedback.map((item) => (
-          <View key={item.stars} style={styles.feedbackRow}>
-            <Text style={{ width: 32 }}>{item.stars}★</Text>
-            <View style={styles.bar}>
-              <View style={[styles.fillBar, { width: `${item.count}%` }]} />
-            </View>
-            <Text style={{ marginLeft: 6 }}>{item.count}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Action Buttons */}
-      <TouchableOpacity
-        style={[
-          styles.withdrawButton,
-          celebProfile.balance <= 0 && { backgroundColor: '#ccc' },
-        ]}
-        disabled={celebProfile.balance <= 0}
-        onPress={() =>
-          navigation.navigate('Withdraw', {
-            balance: celebProfile.balance,
-            celebProfile,
-          })
-        }
-      >
-        <Text style={styles.withdrawButtonText}>Withdraw Funds</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.logOutButton}
-        onPress={async () => {
-          await AsyncStorage.removeItem('userToken');
-          await AsyncStorage.removeItem('userInfo');
-          setIsLoggedIn(false);
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'UnifiedLogin' }],
-          });
-        }}
-      >
-        <Text style={styles.withdrawButtonText}>Logout</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.06,
+  container: { flex: 1, backgroundColor: '#f9f9f9' },
+  scrollContent: { paddingBottom: 30 },
+
+  backBtn: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 10,
   },
-  container: {
-    padding: 24,
-    marginTop: 10,
-    alignItems: 'center',
-    backgroundColor: '#fff9f5',
-  },
+
+  // Header
   header: {
-    position: 'relative',
     alignItems: 'center',
+    paddingVertical: 40,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     borderWidth: 3,
-    borderColor: Colors.primary,
-    marginBottom: 16,
+    borderColor: Colors.textPrimary,
+    marginBottom: 12,
   },
-  editIcon: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#eee',
-    borderRadius: 20,
-    padding: 6,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.primary,
-  },
-  bio: {
-    fontSize: 15,
-    color: '#444',
-    textAlign: 'center',
-    marginVertical: 12,
-    paddingHorizontal: 10,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginVertical: 12,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-  },
-  detailBox: {
-    width: '100%',
+  username: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
+  userEmail: { fontSize: 14, color: Colors.textPrimary, opacity: 0.9 },
+
+  // Balance Card
+  balanceCard: {
     backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 12,
+    marginHorizontal: 20,
+    marginTop: -30,
+    borderRadius: 20,
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 16,
     shadowColor: '#000',
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 4,
   },
-  label: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 4,
-  },
-  value: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#222',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.primary,
-    alignSelf: 'flex-start',
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  shoutoutCard: {
-    backgroundColor: '#fff',
-    padding: 14,
-    marginRight: 10,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
-    width: 160,
-  },
-  shoutoutText: {
-    fontWeight: '600',
-    color: Colors.primary,
-    marginBottom: 4,
-  },
-  shoutoutMessage: {
-    color: '#333',
-    fontSize: 14,
-  },
-  shoutoutDelete: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 60,
-    marginRight: 10,
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
-  },
-  feedbackContainer: {
-    width: '100%',
-    marginTop: 10,
-  },
-  feedbackRow: {
+  balanceLabel: { fontSize: 14, color: Colors.textSecondary, opacity: 0.7, marginBottom: 6 },
+  balanceValue: { fontSize: 36, fontWeight: '800', color: Colors.textSecondary },
+
+  // Menu
+  menuSection: { marginTop: 30, paddingHorizontal: 20 },
+  menuCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    backgroundColor: '#fff',
+    borderRadius: 22,          // smoother rounded corners
+    paddingVertical: 12,        // slightly less padding for sleekness
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,       // lighter shadow for modern feel
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 2,              // less elevation
   },
-  bar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: '#eee',
-    borderRadius: 5,
-    marginHorizontal: 8,
+  iconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,           // slightly tighter spacing
   },
-  fillBar: {
-    height: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: 5,
-  },
-  withdrawButton: {
-    marginTop: 24,
-    backgroundColor: '#e67e22',
-    paddingVertical: 14,
-    paddingHorizontal: 32,
+  menuText: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
+
+  // Logout
+  logoutBtn: {
+    backgroundColor: Colors.accentRed,
+    paddingVertical: 16,
     borderRadius: 30,
-    elevation: 3,
-    alignSelf: 'center',
+    alignItems: 'center',
+    marginTop: 30,
+    marginHorizontal: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  withdrawButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  logOutButton: {
-    marginTop: 16,
-    backgroundColor: '#c0392b',
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 30,
-    elevation: 3,
-    alignSelf: 'center',
-  },
+  logoutText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
 });

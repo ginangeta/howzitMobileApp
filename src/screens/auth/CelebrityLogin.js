@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccc',
   },
   buttonText: {
-    color: Colors.textLight,
+    color: Colors.textPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },

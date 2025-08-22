@@ -3,11 +3,27 @@ import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GestureHandlerRootView } from 'react-native-gesture-handler'; // ✅ Import this
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import AuthNavigator from './src/navigation/AuthNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { LoginProvider } from './src/context/LoginContext';
+
+import { ThemeProvider, useAppTheme } from './src/context/ThemeContext';
+
+function AppContent({ showOnboarding, onFinishOnboarding }) {
+  const { navTheme } = useAppTheme();
+
+  return (
+    <NavigationContainer theme={navTheme}>
+      {showOnboarding ? (
+        <OnboardingScreen onDone={onFinishOnboarding} />
+      ) : (
+        <AuthNavigator />
+      )}
+    </NavigationContainer>
+  );
+}
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -17,16 +33,13 @@ export default function App() {
     const checkOnboarding = async () => {
       try {
         const seen = await AsyncStorage.getItem('hasSeenOnboarding');
-        if (!seen) {
-          setShowOnboarding(true);
-        }
-      } catch (error) {
-        console.error('Error checking onboarding status', error);
+        setShowOnboarding(!seen);
+      } catch (e) {
+        console.warn('Error checking onboarding status', e);
       } finally {
         setLoading(false);
       }
     };
-
     checkOnboarding();
   }, []);
 
@@ -34,8 +47,8 @@ export default function App() {
     try {
       await AsyncStorage.setItem('hasSeenOnboarding', 'true');
       setShowOnboarding(false);
-    } catch (error) {
-      console.error('Error setting onboarding status', error);
+    } catch (e) {
+      console.warn('Error setting onboarding status', e);
     }
   };
 
@@ -48,15 +61,14 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}> {/* ✅ Wrap everything */}
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <LoginProvider>
-        <NavigationContainer>
-          {showOnboarding ? (
-            <OnboardingScreen onDone={handleFinishOnboarding} />
-          ) : (
-            <AuthNavigator />
-          )}
-        </NavigationContainer>
+        <ThemeProvider>
+          <AppContent
+            showOnboarding={showOnboarding}
+            onFinishOnboarding={handleFinishOnboarding}
+          />
+        </ThemeProvider>
       </LoginProvider>
     </GestureHandlerRootView>
   );

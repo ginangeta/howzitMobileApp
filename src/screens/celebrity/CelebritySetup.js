@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 6,
     marginTop: 12,
-    color: Colors.textDark,
+    color: Colors.textSecondary,
   },
   input: {
     backgroundColor: '#fff',
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     fontSize: 14,
-    color: Colors.textDark,
+    color: Colors.textSecondary,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
@@ -192,11 +192,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentBlue,
   },
   bubbleText: {
-    color: Colors.textDark,
+    color: Colors.textSecondary,
     fontSize: 12,
   },
   bubbleTextSelected: {
-    color: Colors.textLight,
+    color: Colors.textPrimary,
     fontWeight: 'bold',
     fontSize: 12,
   },
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   buttonText: {
-    color: Colors.textLight,
+    color: Colors.textPrimary,
     fontWeight: 'bold',
     fontSize: 16,
   },

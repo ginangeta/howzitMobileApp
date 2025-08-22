@@ -1,4 +1,3 @@
-// No changes here — all imports are good
 import React, { useState } from 'react';
 import {
   View,
@@ -8,9 +7,10 @@ import {
   Alert,
   StyleSheet,
   Image,
-  StatusBar,
+  ScrollView,
 } from 'react-native';
 import Modal from 'react-native-modal';
+import Icon from 'react-native-vector-icons/Ionicons';
 import Colors from '../../constants/Colors';
 
 export default function Withdraw({ route, navigation }) {
@@ -20,23 +20,19 @@ export default function Withdraw({ route, navigation }) {
   const [otpModalVisible, setOtpModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const parsedAmount = parseFloat(amount || 0);
+  const receiveAmount = parsedAmount > 0 ? (parsedAmount * 0.98).toFixed(2) : null;
+
   const handleWithdrawPress = () => {
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid amount to withdraw.');
       return;
     }
-    if (numAmount > balance) {
+    if (parsedAmount > balance) {
       Alert.alert('Insufficient Balance', 'You cannot withdraw more than your available balance.');
       return;
     }
-
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setOtpModalVisible(true);
-      Alert.alert('OTP Sent', 'A 6-digit code was sent to your phone.');
-    }, 1000);
+    setOtpModalVisible(true);
   };
 
   const handleOtpSubmit = () => {
@@ -45,107 +41,103 @@ export default function Withdraw({ route, navigation }) {
       return;
     }
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setOtpModalVisible(false);
-      if (otp === '123456') {
-        Alert.alert(
-          'Withdrawal Successful',
-          `You have withdrawn $${parseFloat(amount).toFixed(2)}.`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                setAmount('');
-                setOtp('');
-                navigation.goBack();
-              },
-            },
-          ]
-        );
-      } else {
-        Alert.alert('Incorrect OTP', 'The OTP entered is incorrect. Please try again.');
-      }
-    }, 1000);
+    setOtpModalVisible(false);
+    Alert.alert(
+      'Withdrawal Successful',
+      `You have withdrawn $${parsedAmount.toFixed(2)}.`,
+      [{ text: 'OK', onPress: () => setAmount('') }]
+    );
+    setOtp('');
   };
-
-  const parsedAmount = parseFloat(amount || 0);
-  const receiveAmount = parsedAmount > 0 ? (parsedAmount * 0.98).toFixed(2) : null;
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../../../assets/images/abstract_bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      />
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-      <Text style={styles.title}>💵 Withdraw Funds</Text>
-      <Text style={styles.balance}>Available Balance: ${balance.toFixed(2)}</Text>
-
-      <View style={styles.profileRow}>
-        <Image
-          source={{ uri: celebProfile?.avatar } || require('../../../assets/images/default_avatar.png')}
-          style={styles.avatar}
-        />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.celebName}>{celebProfile?.name || 'Your Profile'}</Text>
-          <Text style={styles.walletId}>Wallet ID: {celebProfile?.walletId || 'N/A'}</Text>
-        </View>
-      </View>
-
-      <View style={styles.infoCard}>
-        <Text style={styles.infoText}>🔎 Minimum Withdrawal: $5.00</Text>
-        <Text style={styles.infoText}>⏱ Processing Time: 24 hours</Text>
-        <Text style={styles.infoText}>📅 Last Withdrawal: 3 days ago</Text>
-      </View>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Enter amount"
-        keyboardType="numeric"
-        value={amount}
-        onChangeText={setAmount}
-        editable={!loading}
-        placeholderTextColor="#aaa"
-      />
-
-      {receiveAmount && (
-        <View style={styles.previewBox}>
-          <Text style={styles.previewLabel}>You'll Receive:</Text>
-          <Text style={styles.previewAmount}>
-            ${receiveAmount}
-            <Text style={styles.feeNote}> (after 2% fee)</Text>
-          </Text>
-        </View>
-      )}
-
+      {/* Back Button */}
       <TouchableOpacity
-        style={[styles.button, loading && { backgroundColor: '#ccc' }]}
-        onPress={handleWithdrawPress}
-        disabled={loading}
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.8}
       >
-        <Text style={styles.buttonText}>
-          {loading ? 'Sending OTP...' : 'Withdraw Now'}
-        </Text>
+        <Icon name="arrow-back" size={24} color={Colors.primary} />
       </TouchableOpacity>
 
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Icon name="cash-outline" size={60} color={Colors.primary} />
+          <Text style={styles.title}>Withdraw Funds</Text>
+          <Text style={styles.subtitle}>
+            Withdraw your earnings safely and quickly to your account.
+          </Text>
+        </View>
+
+        {/* Profile + Balance Card */}
+        <View style={styles.profileCard}>
+          <Image
+            source={{ uri: celebProfile?.avatar } || require('../../../assets/images/default_avatar.png')}
+            style={styles.avatar}
+          />
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <Text style={styles.celebName}>{celebProfile?.name || 'Your Profile'}</Text>
+            <Text style={styles.walletId}>Wallet ID: {celebProfile?.walletId || 'N/A'}</Text>
+            <Text style={styles.balanceText}>Available: <Text style={styles.balanceValue}>${balance.toFixed(2)}</Text></Text>
+          </View>
+        </View>
+
+        {/* Amount Input */}
+        <View style={styles.card}>
+          <TextInput
+            placeholder="Enter amount"
+            placeholderTextColor="#aaa"
+            keyboardType="numeric"
+            style={styles.input}
+            value={amount}
+            onChangeText={setAmount}
+          />
+
+          {receiveAmount && (
+            <View style={styles.receiveBox}>
+              <Text style={styles.receiveLabel}>You'll Receive</Text>
+              <Text style={styles.receiveAmount}>
+                ${receiveAmount} <Text style={styles.feeNote}>(after 2% fee)</Text>
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Withdraw Button */}
+        <TouchableOpacity
+          style={[styles.button, loading && { backgroundColor: '#ccc' }]}
+          onPress={handleWithdrawPress}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? 'Processing...' : 'Withdraw Now'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Footer */}
+        <Text style={styles.footerText}>🔒 Secure withdrawal powered by Howzit!</Text>
+      </ScrollView>
+
+      {/* OTP Modal */}
       <Modal
         isVisible={otpModalVisible}
         onBackdropPress={() => !loading && setOtpModalVisible(false)}
-        animationIn="fadeInUp"
-        animationOut="fadeOutDown"
+        animationIn="zoomIn"
+        animationOut="zoomOut"
         backdropOpacity={0.4}
         style={styles.modal}
       >
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>🔐 Enter OTP</Text>
+          <Text style={styles.modalTitle}>Enter OTP</Text>
           <Text style={styles.modalSubtitle}>
-            Enter the 6-digit code sent to your phone to confirm withdrawal of ${parsedAmount.toFixed(2)}.
+            Enter the 6-digit code sent to your phone
           </Text>
-
           <TextInput
             placeholder="e.g. 123456"
             placeholderTextColor="#aaa"
@@ -155,15 +147,8 @@ export default function Withdraw({ route, navigation }) {
             onChangeText={setOtp}
             style={styles.otpInput}
           />
-
-          <TouchableOpacity
-            style={[styles.modalButton, loading && { backgroundColor: '#ccc' }]}
-            onPress={handleOtpSubmit}
-            disabled={loading}
-          >
-            <Text style={styles.modalButtonText}>
-              {loading ? 'Verifying...' : 'Confirm Withdrawal'}
-            </Text>
+          <TouchableOpacity style={styles.modalButton} onPress={handleOtpSubmit}>
+            <Text style={styles.modalButtonText}>Confirm Withdrawal</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -172,118 +157,84 @@ export default function Withdraw({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#fffdfb' },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.07,
+    opacity: 0.06,
   },
-  container: {
-    flex: 1,
-    padding: 24,
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
     backgroundColor: '#fff',
-    justifyContent: 'center',
+    borderRadius: 30,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 4,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: Colors.primary,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  balance: {
-    fontSize: 16,
-    color: '#444',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  profileRow: {
+  content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, alignItems: 'center' },
+  header: { alignItems: 'center', marginBottom: 30 },
+  title: { fontSize: 26, fontWeight: '700', color: Colors.primary, marginTop: 10 },
+  subtitle: { fontSize: 15, color: '#666', textAlign: 'center', marginTop: 6, paddingHorizontal: 12 },
+  profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 16,
+    borderRadius: 18,
+    padding: 18,
+    width: '100%',
     shadowColor: '#000',
     shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 4,
     marginBottom: 20,
   },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#eee',
-  },
-  celebName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  walletId: {
-    fontSize: 13,
-    color: '#999',
-  },
-  infoCard: {
-    backgroundColor: '#f0f4f8',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#444',
-    marginBottom: 4,
+  avatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#eee' },
+  celebName: { fontSize: 16, fontWeight: '600', color: '#333' },
+  walletId: { fontSize: 13, color: '#999' },
+  balanceText: { fontSize: 14, color: '#444', marginTop: 6 },
+  balanceValue: { fontWeight: '700', color: Colors.primary },
+  card: {
+    borderRadius: 18,
+    padding: 20,
+    width: '100%',
+    marginBottom: 30,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.bubbleBg,
     borderRadius: 14,
     padding: 16,
     fontSize: 16,
     color: '#333',
     borderWidth: 1,
     borderColor: '#eee',
+    marginBottom: 12,
     textAlign: 'center',
-    marginBottom: 16,
   },
-  previewBox: {
-    backgroundColor: '#e7f9f3',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#bde5da',
-  },
-  previewLabel: {
-    fontSize: 14,
-    color: '#222',
-  },
-  previewAmount: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  feeNote: {
-    fontSize: 12,
-    color: '#888',
-  },
+  receiveBox: { marginTop: 10, alignItems: 'center' },
+  receiveLabel: { fontSize: 14, color: '#444', marginBottom: 2 },
+  receiveAmount: { fontSize: 20, fontWeight: '700', color: Colors.primary },
+  feeNote: { fontSize: 12, color: '#888' },
   button: {
     backgroundColor: Colors.primary,
     paddingVertical: 16,
     borderRadius: 30,
     shadowColor: '#000',
     shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 8,
     elevation: 4,
+    width: '100%',
+    marginBottom: 20,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  modal: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center' },
+  footerText: { fontSize: 13, color: '#888', textAlign: 'center', marginBottom: 30 },
+  modal: { justifyContent: 'center', alignItems: 'center' },
   modalContent: {
     backgroundColor: '#fff',
     borderRadius: 20,
@@ -291,27 +242,17 @@ const styles = StyleSheet.create({
     width: '90%',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
-    elevation: 5,
+    elevation: 6,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 6,
-    color: Colors.primary,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
+  modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8, color: Colors.primary },
+  modalSubtitle: { fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' },
   otpInput: {
     width: '100%',
     backgroundColor: '#f9f9f9',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 14,
     fontSize: 18,
     textAlign: 'center',
@@ -319,16 +260,6 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     marginBottom: 20,
   },
-  modalButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 12,
-    borderRadius: 25,
-    width: '100%',
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
+  modalButton: { backgroundColor: Colors.primary, paddingVertical: 12, borderRadius: 25, width: '100%' },
+  modalButtonText: { color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center' },
 });

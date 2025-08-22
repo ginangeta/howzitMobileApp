@@ -49,11 +49,6 @@ export default function DepositPage({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../../../assets/images/abstract_bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      />
 
       {/* Back Button */}
       <TouchableOpacity

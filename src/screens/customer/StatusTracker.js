@@ -1,133 +1,180 @@
-import React from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  Image,
   ScrollView,
   TouchableOpacity,
   Linking,
-  Clipboard, Alert, Platform, Share, ToastAndroid
+  Alert,
+  Platform,
+  Share,
+  ToastAndroid,
+  Image,
+  Animated,
 } from 'react-native';
-import Colors from '../../constants/Colors';
 import Icon from 'react-native-vector-icons/Ionicons';
+import Clipboard from '@react-native-clipboard/clipboard';
+import LinearGradient from 'react-native-linear-gradient';
+
+import { useAppTheme } from '../../context/ThemeContext';
 
 export default function StatusTracker({ route, navigation }) {
-  const {
-    celeb,
-    message,
-    messageType,
-    recipient,
-    deliveryTime,
-    status,
-    videoUrl, // 👈 expect this if completed
-  } = route.params;
+  const { colors } = useAppTheme();
 
-  const statusSteps = ['Pending', 'Accepted', 'Completed'];
+  const { celeb, message, messageType, recipient, deliveryTime, status, videoUrl } = route.params;
+
+  const statusSteps = useMemo(() => ['Pending', 'Accepted', 'Completed'], []);
   const currentStepIndex = statusSteps.indexOf(status);
 
-  const handleViewShoutout = () => {
-    if (videoUrl) Linking.openURL(videoUrl);
-  };
+  // Animated value for progress fill
+  const fillAnim = useRef(new Animated.Value(0)).current;
+
+  // Animated values for step circles
+  const scaleAnims = useRef(statusSteps.map(() => new Animated.Value(1))).current;
+
+  useEffect(() => {
+    Animated.timing(fillAnim, {
+      toValue: (currentStepIndex + 1) / statusSteps.length,
+      duration: 600,
+      useNativeDriver: false,
+    }).start();
+
+    scaleAnims.forEach((anim, index) => {
+      Animated.spring(anim, {
+        toValue: index === currentStepIndex ? 1.4 : 1,
+        friction: 5,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [currentStepIndex, fillAnim, statusSteps, scaleAnims]);
+
+  const handleViewShoutout = () => videoUrl && Linking.openURL(videoUrl);
 
   const handleCopyLink = () => {
     if (videoUrl) {
       Clipboard.setString(videoUrl);
-      if (Platform.OS === 'android') {
-        ToastAndroid.show('Link copied to clipboard!', ToastAndroid.SHORT);
-      } else {
-        Alert.alert('Link copied!', 'Shoutout link copied to clipboard.');
-      }
+      Platform.OS === 'android'
+        ? ToastAndroid.show('Link copied to clipboard!', ToastAndroid.SHORT)
+        : Alert.alert('Link copied!', 'Shoutout link copied to clipboard.');
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={require('../../../assets/images/abstract_bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
+    <View style={[styles.container, { backgroundColor: colors.secondary }]}>
+      <LinearGradient
+        colors={[`${colors.primary}22`, `${colors.primary}00`]}
+        style={styles.headerGradient}
       />
-
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Back Button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.8}
-        >
-          <Icon name="arrow-back" size={24} color={Colors.primary} />
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.primary }]} onPress={() => navigation.goBack()}>
+          <Icon name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
 
+        {/* Title */}
+        <Text style={[styles.title, { color: colors.textSecondary }]}>Request Details</Text>
 
-        <Text style={styles.title}>Request Details</Text>
-        <Text style={styles.summary}>Something here</Text>
-        {/* Celeb Card */}
-        <View style={styles.celebCard}>
-          <Image source={{ uri: celeb.avatar }} style={styles.avatar} />
-          <View style={styles.celebDetails}>
-            <Text style={styles.celebName}>{celeb.celebName}</Text>
-            <Text style={styles.deliveryText}>
+        {/* Celebrity Card */}
+        <View style={[styles.celebCard, { backgroundColor: colors.bubbleBg, shadowColor: colors.textSecondary }]}>
+          <Image source={{ uri: celeb.image }} style={styles.celebImage} />
+          <View style={styles.celebInfo}>
+            <Text style={[styles.celebName, { color: colors.textSecondary }]}>{celeb.name}</Text>
+            <Text style={[styles.celebRole, { color: colors.primary }]}>
               Avg Delivery: {celeb.deliveryTime || '24 hrs'}
             </Text>
+            <View style={styles.celebTags}>
+              {celeb.tags?.slice(0, 3).map(tag => (
+                <View key={tag} style={[styles.tagBubble, { backgroundColor: `${colors.primary}22` }]}>
+                  <Text style={[styles.tagText, { color: colors.primary }]}>{tag}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
 
         {/* Progress Steps */}
         <View style={styles.progressContainer}>
-          {statusSteps.map((step, index) => (
-            <View key={step} style={styles.stepContainer}>
-              <View
-                style={[
-                  styles.stepCircle,
-                  index <= currentStepIndex && styles.stepActive,
-                ]}
-              />
-              <Text
-                style={[
-                  styles.stepLabel,
-                  index <= currentStepIndex && styles.stepLabelActive,
-                ]}
-              >
-                {step}
-              </Text>
-              {index < statusSteps.length - 1 && (
-                <View style={styles.stepLine} />
-              )}
-            </View>
-          ))}
+          <Animated.View
+            style={[
+              styles.progressFill,
+              {
+                backgroundColor: colors.primary,
+                width: fillAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%'],
+                }),
+              },
+            ]}
+          />
+          {statusSteps.map((step, index) => {
+            const isActive = index <= currentStepIndex;
+            return (
+              <View key={step} style={styles.stepWrapper}>
+                <Animated.View
+                  style={[
+                    styles.stepCircle,
+                    isActive && { backgroundColor: colors.primary, transform: [{ scale: scaleAnims[index] }] },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    isActive && { color: colors.primary, fontWeight: '600' },
+                  ]}
+                >
+                  {step}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* Message Details */}
-        <View style={styles.card}>
-          <Text style={styles.label}>Message Type</Text>
-          <Text style={styles.value}>{messageType.toUpperCase()}</Text>
+        <View style={[styles.card, { backgroundColor: colors.bubbleBg }]}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Message Type</Text>
+          <Text style={[styles.value, { color: colors.textSecondary }]}>{messageType.toUpperCase()}</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Recipient</Text>
-          <Text style={styles.value}>{recipient}</Text>
+        <View style={[styles.card, { backgroundColor: colors.bubbleBg }]}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Recipient</Text>
+          <Text style={[styles.value, { color: colors.textSecondary }]}>{recipient}</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Message</Text>
-          <Text style={styles.value}>{message}</Text>
+        <View style={[styles.card, { backgroundColor: colors.bubbleBg }]}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Message</Text>
+          <Text style={[styles.value, { color: colors.textSecondary }]}>{message}</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Scheduled Delivery</Text>
-          <Text style={styles.value}>
+        <View style={[styles.card, { backgroundColor: colors.bubbleBg }]}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Scheduled Delivery</Text>
+          <Text style={[styles.value, { color: colors.textSecondary }]}>
             {new Date(deliveryTime).toLocaleString()}
           </Text>
         </View>
 
         {/* Status Bubble */}
-        <View style={styles.statusBubble(status)}>
-          <Text style={styles.statusText}>{status.toUpperCase()}</Text>
+        <View style={[
+          styles.statusBubble,
+          {
+            backgroundColor:
+              status === 'Pending'
+                ? colors.accentBlue
+                : status === 'Accepted'
+                ? '#ffc107'
+                : status === 'Completed'
+                ? colors.accentGreen
+                : '#ccc',
+          },
+        ]}>
+          <Text style={[styles.statusText, { color: colors.textPrimary }]}>{status.toUpperCase()}</Text>
         </View>
 
         {/* Info Text */}
-        <Text style={styles.info}>
+        <Text style={[styles.helperText, { color: colors.textSecondary }]}>
           {status === 'Pending' &&
             `Your request is being reviewed. Estimated delivery within ${celeb.deliveryTime || '24 hrs'}.`}
           {status === 'Accepted' &&
@@ -136,36 +183,24 @@ export default function StatusTracker({ route, navigation }) {
             '🎉 Your shoutout is ready! Click below to view it or share.'}
         </Text>
 
-        {/* View Shoutout CTA */}
+        {/* Shoutout Buttons */}
         {status === 'Completed' && videoUrl && (
           <>
-            <TouchableOpacity
-              style={styles.shoutoutButton}
-              onPress={handleViewShoutout}
-              activeOpacity={0.85}
-            >
-              <Icon name="play-circle-outline" size={22} color="#fff" />
-              <Text style={styles.shoutoutText}>View Shoutout</Text>
+            <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleViewShoutout}>
+              <Text style={[styles.buttonText, { color: colors.textPrimary }]}>View Shoutout</Text>
             </TouchableOpacity>
 
-            <View style={{ marginTop: 12, alignItems: 'center' }}>
-              <Text style={{ color: Colors.textDark, marginBottom: 8 }}>Share your shoutout</Text>
-              <View style={{ flexDirection: 'row', gap: 20 }}>
-                <TouchableOpacity onPress={handleCopyLink} style={styles.shareButton}>
-                  <Icon name="copy-outline" size={20} color="#fff" />
-                </TouchableOpacity>
+            <View style={styles.shareButtonsContainer}>
+              <TouchableOpacity onPress={handleCopyLink} style={[styles.button, styles.shareButton, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.buttonText, { color: colors.textPrimary }]}>Copy Link</Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={() =>
-                    Share.share({
-                      message: `Check out my shoutout! 🎉 ${videoUrl}`,
-                    })
-                  }
-                  style={styles.shareButton}
-                >
-                  <Icon name="share-social-outline" size={20} color="#fff" />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={() => Share.share({ message: `Check out my shoutout! 🎉 ${videoUrl}` })}
+                style={[styles.button, styles.shareButton, { backgroundColor: colors.primary }]}
+              >
+                <Text style={[styles.buttonText, { color: colors.textPrimary }]}>Share</Text>
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -175,197 +210,46 @@ export default function StatusTracker({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.15,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: Colors.secondary,
-    position: 'relative',
-  },
+  container: { flex: 1 },
+  headerGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 160, opacity: 0.15 },
+  contentContainer: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40 },
   backButton: {
     position: 'absolute',
-    top: 50,
-    left: 20,
-    zIndex: 10,
-    backgroundColor: '#fff',
-    borderRadius: 30,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  summary: {
-    textAlign: 'center',
-    color: Colors.textDark,
-    marginBottom: 26,
-    fontSize: 14,
-  },
-  content: {
-    paddingTop: 50,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
-  celebCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  avatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#ddd',
-  },
-  celebDetails: {
-    marginLeft: 16,
-  },
-  celebName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.black,
-  },
-  deliveryText: {
-    fontSize: 13,
-    color: Colors.textDark,
-    marginTop: 4,
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-    paddingHorizontal: 10,
-  },
-  stepContainer: {
-    alignItems: 'center',
-    flex: 1,
-    position: 'relative',
-  },
-  stepCircle: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#ccc',
-    marginBottom: 4,
-  },
-  stepActive: {
-    backgroundColor: Colors.primary,
-  },
-  stepLabel: {
-    fontSize: 12,
-    color: '#aaa',
-  },
-  stepLabelActive: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  stepLine: {
-    position: 'absolute',
-    top: 7,
-    left: '50%',
-    width: '100%',
-    height: 2,
-    backgroundColor: '#ccc',
-    zIndex: -1,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  label: {
-    fontSize: 13,
-    color: Colors.textDark,
-    marginBottom: 4,
-    fontWeight: '600',
-  },
-  value: {
-    fontSize: 15,
-    color: Colors.textDark,
-  },
-  statusBubble: (status) => ({
-    backgroundColor:
-      status === 'Pending'
-        ? Colors.accentBlue
-        : status === 'Accepted'
-          ? '#ffc107'
-          : status === 'Completed'
-            ? Colors.accentGreen
-            : '#ccc',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    marginTop: 24,
-    alignSelf: 'center',
-  }),
-  statusText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  info: {
-    marginTop: 20,
-    textAlign: 'center',
-    fontSize: 14,
-    color: Colors.textDark,
-    paddingHorizontal: 10,
-    lineHeight: 20,
-  },
-  shoutoutButton: {
-    marginTop: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-    alignSelf: 'center',
-  },
-  shoutoutText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  shareButton: {
-    backgroundColor: Colors.accentBlue,
-    padding: 12,
-    borderRadius: 30,
+    top: 44,
+    left: 18,
+    zIndex: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 50,
-    height: 50,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 6,
   },
+  title: { fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 18 },
+  celebCard: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, padding: 14, borderRadius: 16, shadowOpacity: 0.06, shadowOffset: { width: 0, height: 3 }, shadowRadius: 6, elevation: 3 },
+  celebImage: { width: 70, height: 70, borderRadius: 50, marginRight: 14, backgroundColor: '#ddd' },
+  celebInfo: { flex: 1 },
+  celebName: { fontSize: 16, fontWeight: '800' },
+  celebRole: { fontSize: 13, marginTop: 4 },
+  celebTags: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
+  tagBubble: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginRight: 6, marginBottom: 6 },
+  tagText: { fontSize: 12, fontWeight: '600' },
+  progressContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28, position: 'relative', height: 40 },
+  progressFill: { position: 'absolute', top: 7, left: 0, height: 2, borderRadius: 1 },
+  stepWrapper: { alignItems: 'center', flex: 1 },
+  stepCircle: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#ccc', marginBottom: 6 },
+  stepLabel: { fontSize: 12, color: '#aaa', textAlign: 'center' },
+  card: { borderRadius: 14, padding: 14, marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: '700', marginBottom: 6 },
+  value: { fontSize: 15 },
+  statusBubble: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 30, marginTop: 24, alignSelf: 'center' },
+  statusText: { fontWeight: 'bold', fontSize: 14, textAlign: 'center' },
+  helperText: { textAlign: 'center', fontSize: 13, marginTop: 20, lineHeight: 20 },
+  button: { paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginBottom: 16, shadowOpacity: 0.18, shadowOffset: { width: 0, height: 6 }, shadowRadius: 14, elevation: 6 },
+  buttonText: { fontWeight: '800', fontSize: 16 },
+  shareButtonsContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 16, marginBottom: 20 },
+  shareButton: { flex: 1 },
 });

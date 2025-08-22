@@ -18,7 +18,6 @@ import RequestDetails from '../screens/celebrity/RequestDetails';
 import Withdraw from '../screens/celebrity/Withdraw';
 
 import { useLogin } from '../context/LoginContext';
-
 import CustomerTabs from './CustomerTabs';
 import CelebrityTabs from './CelebrityTabs';
 
@@ -26,6 +25,7 @@ const Stack = createNativeStackNavigator();
 
 export default function AuthNavigator() {
   const { isLoggedIn, userType } = useLogin();
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {!isLoggedIn ? (
@@ -50,7 +50,8 @@ export default function AuthNavigator() {
           <Stack.Screen name="CelebrityDashboard" component={CelebrityDashboard} />
           <Stack.Screen name="RequestDetails" component={RequestDetails} />
           <Stack.Screen name="Withdraw" component={Withdraw} />
-        </>)}
+        </>
+      )}
     </Stack.Navigator>
   );
 }

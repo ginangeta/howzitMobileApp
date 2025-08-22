@@ -1,272 +1,653 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
+  Share,
   View,
   Text,
-  FlatList,
   StyleSheet,
+  FlatList,
+  ScrollView,
+  TextInput,
   TouchableOpacity,
   Image,
-  TextInput,
-  StatusBar,
-  ScrollView,
+  SafeAreaView,
 } from 'react-native';
-import Colors from '../../constants/Colors';
-import api from '../../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useAppTheme } from '../../context/ThemeContext'; // hook for theme
+import topCelebs from '../data/topCelebs';
+import * as Animatable from 'react-native-animatable';
 
-const sampleCelebs = [
-  {
-    id: '1',
-    displayName: 'DJ Zinhle',
-    category: 'Musician',
-    price: 25,
-    deliveryTime: '2 days',
-    rating: 4.8,
-    shoutoutsCount: 142,
-    picture: 'https://randomuser.me/api/portraits/men/70.jpg',
-    bio: 'Top DJ and businesswoman ready to hype you up!',
-  },
-  {
-    id: '2',
-    displayName: 'Cassper Nyovest',
-    category: 'Musician',
-    price: 40,
-    deliveryTime: '1 day',
-    rating: 4.6,
-    shoutoutsCount: 220,
-    picture: 'https://randomuser.me/api/portraits/men/54.jpg',
-    bio: 'South African rap legend. Bringing the hype to your screen!',
-  },
-  {
-    id: '3',
-    displayName: 'Sho Madjozi',
-    category: 'Actor',
-    price: 30,
-    deliveryTime: '3 days',
-    rating: 4.9,
-    shoutoutsCount: 190,
-    picture: 'https://randomuser.me/api/portraits/women/30.jpg',
-    bio: 'Colorful, creative, and full of joy! Let’s celebrate together!',
-  },
-  {
-    id: '4',
-    displayName: 'Black Coffee',
-    category: 'Musician',
-    price: 50,
-    deliveryTime: '2 days',
-    rating: 4.7,
-    shoutoutsCount: 165,
-    picture: 'https://randomuser.me/api/portraits/men/63.jpg',
-    bio: 'Global DJ with a touch of class. Shoutouts with style.',
-  },
+const categories = [
+  { id: '1', name: 'Actor', icon: 'film-outline' },
+  { id: '2', name: 'Musician', icon: 'musical-notes-outline' },
+  { id: '3', name: 'Athlete', icon: 'football-outline' },
+  { id: '4', name: 'Comedian', icon: 'happy-outline' },
+  { id: '5', name: 'Influencer', icon: 'people-outline' },
+  { id: '6', name: 'Creator', icon: 'camera-outline' },
 ];
 
+// dynamic popular category banners (now include icon background colors)
+const popularCategories = [
+  { id: 'p1', title: 'Birthday', subtitle: 'Personalized videos', bg: '#6fc4ff', icon: 'gift', iconBg: '#ff7ab6' },
+  { id: 'p2', title: 'Weddings', subtitle: 'The perfect gift', bg: '#ffb3c0', icon: 'heart', iconBg: '#ff6f61' },
+  { id: 'p3', title: 'Corporate', subtitle: 'Team messages', bg: '#ffd36f', icon: 'briefcase', iconBg: '#ff9f43' },
+  { id: 'p4', title: 'Anniversary', subtitle: 'Make it special', bg: '#9b7cff', icon: 'calendar', iconBg: '#6f74ff' },
+  { id: 'p5', title: 'Graduation', subtitle: 'Celebrate wins', bg: '#7be39a', icon: 'school', iconBg: '#2dd4bf' },
+];
+
+// Helper to extract numeric price where possible (best-effort)
+const parsePriceNumber = (priceStr = '') => {
+  try {
+    const match = priceStr.replace(/,/g, '').match(/\d+/);
+    return match ? Number(match[0]) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const PriceWithBadge = ({ price, colors }) => (
+  <View style={styles.priceRow}>
+    <Text style={[styles.celebrityPrice, { color: colors.primary }]}>{price}</Text>
+    <View style={[styles.rateBadge, { backgroundColor: colors.card }]}> 
+      <Ionicons name="flash-outline" size={14} color={colors.primary} />
+      <Text style={[styles.rateText, { color: colors.textSecondary }]}> 24hr</Text>
+    </View>
+  </View>
+);
+
+const CelebrityCardLarge = ({ item, onPress, colors }) => (
+  <Animatable.View animation="fadeInUp" duration={400}>
+    <TouchableOpacity style={[styles.celebrityCardLarge, { backgroundColor: colors.card }]} onPress={onPress}>
+      <Image source={{ uri: item.image }} style={styles.celebrityImageLarge} />
+      <View style={styles.celebrityInfoLarge}>
+        <Text style={[styles.celebrityName, { color: colors.textSecondary }]} numberOfLines={1}>{item.name}</Text>
+        <Text style={[styles.celebrityRole, { color: colors.textMuted }]} numberOfLines={1}>{item.role}</Text>
+        <PriceWithBadge price={item.price} colors={colors} />
+      </View>
+    </TouchableOpacity>
+  </Animatable.View>
+);
+
+const CelebrityCard = ({ item, onPress, colors }) => (
+  <Animatable.View animation="fadeInUp" duration={350}>
+    <TouchableOpacity style={[styles.celebrityCard, { backgroundColor: colors.card }]} onPress={onPress}>
+      <Image source={{ uri: item.image }} style={styles.celebrityImage} />
+      <View style={styles.celebrityInfo}>
+        <Text style={[styles.celebrityName, { color: colors.textSecondary }]} numberOfLines={1}>{item.name}</Text>
+        <Text style={[styles.celebrityRole, { color: colors.textMuted }]} numberOfLines={1}>{item.role}</Text>
+        <PriceWithBadge price={item.price} colors={colors} />
+      </View>
+    </TouchableOpacity>
+  </Animatable.View>
+);
+
+const CircularStar = ({ item, label, onPress, colors }) => (
+  <TouchableOpacity style={styles.starItem} onPress={onPress}>
+    <View style={[styles.starAvatarWrap, { backgroundColor: colors.card }]}>
+      <Image source={{ uri: item.image }} style={styles.starAvatar} />
+    </View>
+    <Text style={[styles.starLabel, { color: colors.textSecondary }]} numberOfLines={1}>{label}</Text>
+  </TouchableOpacity>
+);
+
 export default function CustomerHome({ navigation }) {
-  const [search, setSearch] = useState('');
-  const [celebs, setCelebs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { colors } = useAppTheme();
 
-  useEffect(() => {
-    const fetchCelebs = async () => {
-      try {
-        const res = await api.get('celebs/list-celebs');
-        if (res.data.success) {
-          setCelebs(res.data.data || []);
-        } else {
-          console.warn('⚠️ Failed to fetch celebs:', res.data.message);
-        }
-      } catch (err) {
-        console.error('❌ Error fetching celebs:', err);
-      } finally {
-        setLoading(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const q = (searchQuery || '').trim().toLowerCase();
+
+  // Memoize filtered list for performance
+  const filteredCelebs = useMemo(() => {
+    return topCelebs.filter((celeb) => {
+      const matchesCategory = selectedCategory
+        ? celeb.role.toLowerCase() === selectedCategory.toLowerCase()
+        : true;
+      const matchesSearch = q
+        ? celeb.name.toLowerCase().includes(q) || celeb.role.toLowerCase().includes(q)
+        : true;
+      return matchesCategory && matchesSearch;
+    });
+  }, [q, selectedCategory]);
+
+  const searchActive = q.length > 0;
+
+  // group filtered results by role when searching
+  const resultsByRole = useMemo(() => {
+    if (!searchActive) return {};
+    const groups = {};
+    filteredCelebs.forEach((c) => {
+      const role = c.role || 'Other';
+      if (!groups[role]) groups[role] = [];
+      groups[role].push(c);
+    });
+    return groups;
+  }, [filteredCelebs, searchActive]);
+
+  const onShare = async () => {
+    try {
+      await Share.share({
+        message: 'Check out Howzit! Book your favorite celeb for a shoutout 🚀',
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const renderCategory = ({ item }) => (
+    <TouchableOpacity
+      style={styles.categoryItem}
+      onPress={() =>
+        setSelectedCategory(
+          selectedCategory?.toLowerCase() === item.name.toLowerCase()
+            ? null
+            : item.name
+        )
       }
-    };
-
-    fetchCelebs();
-  }, []);
-
-  const filteredCelebs = sampleCelebs.filter((celeb) =>
-    celeb.displayName.toLowerCase().includes(search.toLowerCase())
+    >
+      <View
+        style={[
+          styles.categoryIcon,
+          {
+            backgroundColor:
+              selectedCategory === item.name ? colors.primary : colors.card,
+            borderColor: colors.primary,
+          },
+        ]}
+      >
+        <Ionicons
+          name={item.icon}
+          size={20}
+          color={selectedCategory === item.name ? colors.textPrimary : colors.primary}
+        />
+      </View>
+      <Text style={[styles.categoryText, { color: colors.textSecondary }]}>{item.name}</Text>
+    </TouchableOpacity>
   );
 
-  const renderCard = (item) => (
-    <TouchableOpacity
-      key={item._id}
-      style={styles.card}
-      onPress={() => navigation.navigate('CelebrityProfile', { celeb: item })}
-    >
-      <Image
-        source={{
-          uri: item.picture
-            ? item.picture
-            : 'https://via.placeholder.com/150?text=No+Image',
-        }}
-        style={styles.avatar}
-      />
-      <View style={styles.cardInfo}>
-        <Text style={styles.name}>{item.displayName}</Text>
-        <Text style={styles.price}>
-          ${item.shoutout?.[0]?.price || '0'}
-        </Text>
+  const celebPress = (item) => navigation.navigate('CelebrityProfile', { celeb: item });
+
+  const renderBanner = ({ item }) => (
+    <TouchableOpacity style={[styles.bannerCard, { backgroundColor: item.bg }]} onPress={() => setSelectedCategory(null)}>
+      <View style={styles.bannerInnerRowAlt}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.bannerTitle}>{item.title}</Text>
+          <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
+        </View>
+
+        {/* Right aligned colorful icon (matches figma) */}
+        <View style={[styles.bannerIconWrapRight, { backgroundColor: item.bg }]}> 
+          <Ionicons name={item.icon} size={22} color="#fff" />
+        </View>
       </View>
     </TouchableOpacity>
   );
 
-  const renderSection = (title, data) => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('CelebrityList', { category: title })}>
-          <Text style={styles.seeAll}>See All</Text>
-        </TouchableOpacity>
-      </View>
-      <FlatList
-        data={data}
-        horizontal
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => renderCard(item, true)}
-        showsHorizontalScrollIndicator={false}
-      />
-    </View>
-  );
-
   return (
-    <ScrollView style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-      <Image
-        source={require('../../../assets/images/abstract_bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      />
-      <View style={styles.insideContainer}>
-        <Text style={styles.heroTitle}>Browse</Text>
-        <Text style={styles.subHeader}>Find your favorite celeb and book a shoutout!</Text>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.secondary }]}> 
+      <ScrollView style={[styles.container, { backgroundColor: colors.secondary }]} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={[styles.heroTitle, { color: colors.primary }]}>Browse</Text>
+            <Text style={[styles.subHeader, { color: colors.textMuted }]}>Find your favorite celeb and book a shoutout!</Text>
+          </View>
 
-        <TextInput
-          style={styles.searchBar}
-          placeholder="Search Stars..."
-          placeholderTextColor="#aaa"
-          value={search}
-          onChangeText={setSearch}
-        />
+          <View style={styles.headerIcons}>
+            <TouchableOpacity onPress={() => console.log('notifications')} style={[styles.iconBtn, { backgroundColor: colors.card }]}>
+              <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onShare} style={[styles.iconBtn, { backgroundColor: colors.card, marginLeft: 8 }]}>
+              <Ionicons name="share-social-outline" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-        {filteredCelebs.slice(0, 4).length > 0 &&
-          renderSection('Trending', filteredCelebs.slice(0, 4))}
+        {/* Search Bar */}
+        <View style={[styles.searchContainer, { backgroundColor: colors.bubbleBg }]}> 
+          <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
+          <TextInput
+            placeholder="Try 'Tiwa Savage'"
+            placeholderTextColor={colors.textMuted}
+            style={[styles.searchInput, { color: colors.text }]}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 6 }}>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
 
-        {filteredCelebs.filter((c) => c.category === 'Actor').length > 0 &&
-          renderSection('Actors', filteredCelebs.filter((c) => c.category === 'Actor'))}
+        {/* When searching: show only category-like sections with matching results (grouped by role). Hide other hero sections. */}
+        {searchActive ? (
+          <View>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Results</Text>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>{filteredCelebs.length} found</Text>
+            </View>
 
-        {filteredCelebs.filter((c) => c.category === 'Musician').length > 0 &&
-          renderSection('Musicians', filteredCelebs.filter((c) => c.category === 'Musician'))}
+            {Object.keys(resultsByRole).length === 0 ? (
+              <Text style={{ color: colors.textMuted, paddingHorizontal: 16, marginTop: 8 }}>No results found.</Text>
+            ) : (
+              Object.entries(resultsByRole).map(([role, list]) => (
+                <View key={role}>
+                  <Text style={[styles.sectionTitle, { color: colors.textSecondary, fontSize: 16, marginLeft: 0 }]}>{role}</Text>
+                  <FlatList
+                    data={list}
+                    renderItem={({ item }) => (
+                      <CelebrityCard item={item} onPress={() => celebPress(item)} colors={colors} />
+                    )}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.celebsList}
+                  />
+                </View>
+              ))
+            )}
 
-        {filteredCelebs.filter((c) => c.category === 'Athlete').length > 0 &&
-          renderSection('Athletes', filteredCelebs.filter((c) => c.category === 'Athlete'))}
+          </View>
+        ) : (
+          // full layout when search is empty
+          <>
+            {/* Popular picks */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Popular pick's</Text>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+            </View>
+            <FlatList
+              data={topCelebs.slice(0, 8)}
+              renderItem={({ item }) => (
+                <CelebrityCardLarge item={item} onPress={() => celebPress(item)} colors={colors} />
+              )}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.topCelebsList}
+            />
 
-        {filteredCelebs.filter((c) => c.category === 'Creator').length > 0 &&
-          renderSection('Creators', filteredCelebs.filter((c) => c.category === 'Creator'))}
+            {/* Today's top 5 */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Today's top 5</Text>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+            </View>
+            <FlatList
+              data={filteredCelebs.slice(0, 5)}
+              renderItem={({ item }) => (
+                <CelebrityCard item={item} onPress={() => celebPress(item)} colors={colors} />
+              )}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.celebsList}
+            />
 
-        {filteredCelebs.filter((c) => c.category === 'Religious Leader').length > 0 &&
-          renderSection('Religious Leaders', filteredCelebs.filter((c) => c.category === 'Religious Leader'))}
+            {/* Popular categories (banners) - dynamic horizontally scrollable with right icons */}
+            <View style={[styles.sectionHeaderRow, { marginTop: 6 }]}> 
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Popular categories</Text>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+            </View>
+            <FlatList
+              data={popularCategories}
+              horizontal
+              keyExtractor={(item) => item.id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 12 }}
+              renderItem={renderBanner}
+            />
 
-      </View>
-    </ScrollView>
+            {/* New and Trending */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>New and Trending</Text>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+            </View>
+            <FlatList
+              data={filteredCelebs.slice(2, 8)}
+              renderItem={({ item }) => (
+                <CelebrityCard item={item} onPress={() => celebPress(item)} colors={colors} />
+              )}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.celebsList}
+            />
+
+            {/* Popular stars - circular */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Popular stars</Text>
+              <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+            </View>
+            <FlatList
+              data={topCelebs.slice(0, 8)}
+              horizontal
+              keyExtractor={(item) => item.id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.popularStarsList}
+              renderItem={({ item, index }) => {
+                // simple price tag heuristic
+                const num = parsePriceNumber(item.price);
+                const label = num ? (num < 100 ? `Under ZWG ${Math.ceil(num / 10) * 10}` : `ZWG ${num}+`) : 'Under ZWG100';
+                return <CircularStar item={item} label={label} onPress={() => celebPress(item)} colors={colors} />;
+              }}
+            />
+
+            {/* Other categories (actors, musicians...) - keep as original but show 24hr) */}
+            {!selectedCategory && (
+              <>
+                {topCelebs.filter((c) => c.role === 'Actor').length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Actors</Text>
+                    <FlatList
+                      data={topCelebs.filter((c) => c.role === 'Actor')}
+                      renderItem={({ item }) => (
+                        <CelebrityCard item={item} onPress={() => celebPress(item)} colors={colors} />
+                      )}
+                      keyExtractor={(item) => item.id}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.celebsList}
+                    />
+                  </>
+                )}
+
+                {topCelebs.filter((c) => c.role === 'Musician').length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Musicians</Text>
+                    <FlatList
+                      data={topCelebs.filter((c) => c.role === 'Musician')}
+                      renderItem={({ item }) => (
+                        <CelebrityCard item={item} onPress={() => celebPress(item)} colors={colors} />
+                      )}
+                      keyExtractor={(item) => item.id}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.celebsList}
+                    />
+                  </>
+                )}
+
+                {topCelebs.filter((c) => c.role === 'Athlete').length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Athletes</Text>
+                    <FlatList
+                      data={topCelebs.filter((c) => c.role === 'Athlete')}
+                      renderItem={({ item }) => (
+                        <CelebrityCard item={item} onPress={() => celebPress(item)} colors={colors} />
+                      )}
+                      keyExtractor={(item) => item.id}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.celebsList}
+                    />
+                  </>
+                )}
+
+                {topCelebs.filter((c) => c.role === 'Creator').length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Creators</Text>
+                    <FlatList
+                      data={topCelebs.filter((c) => c.role === 'Creator')}
+                      renderItem={({ item }) => (
+                        <CelebrityCard item={item} onPress={() => celebPress(item)} colors={colors} />
+                      )}
+                      keyExtractor={(item) => item.id}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.celebsList}
+                    />
+                  </>
+                )}
+
+                {topCelebs.filter((c) => c.role === 'Religious Leader').length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Religious Leaders</Text>
+                    <FlatList
+                      data={topCelebs.filter((c) => c.role === 'Religious Leader')}
+                      renderItem={({ item }) => (
+                        <CelebrityCard item={item} onPress={() => celebPress(item)} colors={colors} />
+                      )}
+                      keyExtractor={(item) => item.id}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.celebsList}
+                    />
+                  </>
+                )}
+              </>
+            )}
+
+          </>
+        )}
+
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.08,
-  },
+  safe: { flex: 1 },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  insideContainer: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingHorizontal: 16,
   },
   heroTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.primary,
-    textAlign: 'center',
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'left',
     marginBottom: 4,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconBtn: {
+    borderRadius: 12,
+    padding: 8,
+    shadowOpacity: 0.03,
+    elevation: 1,
+  },
   subHeader: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
+    fontSize: 13,
+    marginBottom: 6,
   },
-  searchBar: {
-    backgroundColor: '#fff',
-    borderColor: '#eee',
-    borderWidth: 1,
-    borderRadius: 25,
-    paddingHorizontal: 16,
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 14,
-    marginBottom: 20,
-    color: '#333',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
-    elevation: 2,
+    borderRadius: 12,
+    marginBottom: 18,
   },
-  section: {
-    marginBottom: 20,
+  searchInput: {
+    marginLeft: 8,
+    flex: 1,
+    fontSize: 16,
   },
-  sectionHeader: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
-    paddingHorizontal: 4,
+    alignItems: 'center',
+    marginBottom: 6,
+    marginTop: 6,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.primary,
+    fontWeight: '700',
+    paddingBottom: 12,
   },
   seeAll: {
-    fontSize: 14,
-    color: Colors.accentBlue,
+    fontSize: 13,
+    fontWeight: '600',
   },
-  card: {
-    backgroundColor: Colors.bubbleBg,
-    borderRadius: 16,
+  categoriesList: {
+    paddingBottom: 10,
+  },
+  categoryItem: {
+    alignItems: 'center',
+    marginRight: 18,
+  },
+  categoryIcon: {
+    padding: 10,
+    borderRadius: 40,
+    marginBottom: 6,
+    borderWidth: 1,
+  },
+  categoryText: {
+    fontSize: 13,
+  },
+  topCelebsList: {
+    paddingBottom: 18,
+  },
+  celebsList: {
+    paddingBottom: 18,
+  },
+  celebrityCardLarge: {
+    borderRadius: 12,
+    marginRight: 16,
     overflow: 'hidden',
-    width: 160,
-    marginRight: 12,
+    width: 170,
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 3,
   },
-  smallCard: {
-    width: 140,
+  celebrityImageLarge: {
+    width: '100%',
+    height: 150,
   },
-  avatar: {
+  celebrityInfoLarge: {
+    padding: 10,
+  },
+  celebrityCard: {
+    borderRadius: 12,
+    marginRight: 16,
+    overflow: 'hidden',
+    width: 150,
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  celebrityImage: {
     width: '100%',
     height: 120,
-    resizeMode: 'cover',
   },
-  cardInfo: {
-    padding: 8,
-    alignItems: 'center',
-    backgroundColor: Colors.secondary,
+  celebrityInfo: {
+    padding: 10,
   },
-  name: {
+  celebrityName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  celebrityRole: {
+    fontSize: 13,
+    marginVertical: 4,
+  },
+  celebrityPrice: {
     fontSize: 14,
+    fontWeight: '700',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  rateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 20,
+  },
+  rateText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: Colors.textDark,
-    marginBottom: 2,
   },
-  bio: {
+  popularCategoriesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  bannerCard: {
+    width: 220,
+    marginRight: 12,
+    borderRadius: 12,
+    padding: 14,
+    height: 100,
+    justifyContent: 'center',
+  },
+  bannerInnerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bannerInnerRowAlt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bannerIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)'
+  },
+  bannerIconWrapRight: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  bannerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  bannerSubtitle: {
+    fontSize: 13,
+    color: '#fff',
+  },
+  popularStarsList: {
+    paddingVertical: 10,
+    paddingBottom: 18,
+  },
+  starItem: {
+    alignItems: 'center',
+    marginRight: 14,
+    width: 72,
+  },
+  starAvatarWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 36,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  starAvatar: {
+    width: 64,
+    height: 64,
+  },
+  starLabel: {
+    marginTop: 6,
     fontSize: 12,
-    color: '#555',
     textAlign: 'center',
-  },
-  rating: {
-    fontSize: 12,
-    color: Colors.accentGreen,
-    marginTop: 4,
   },
 });

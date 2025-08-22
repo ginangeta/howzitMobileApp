@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ export default function CelebrityDashboard({ navigation, route }) {
       id: '1',
       customerName: 'Gina',
       messageType: 'video',
-      deliveryTime: '2025-08-10T10:00:00',
+      deliveryTime: '2025-08-20T10:00:00',
       status: 'Pending',
       message: 'Happy birthday shoutout!',
       recipient: 'James',
@@ -30,7 +30,7 @@ export default function CelebrityDashboard({ navigation, route }) {
       id: '2',
       customerName: 'Alex',
       messageType: 'audio',
-      deliveryTime: '2025-08-09T15:00:00',
+      deliveryTime: '2025-08-19T15:00:00',
       status: 'Accepted',
       message: 'Encouragement message',
       recipient: 'Nina',
@@ -50,9 +50,10 @@ export default function CelebrityDashboard({ navigation, route }) {
   const groupedRequests = ['Pending', 'Accepted'].flatMap((status) => {
     const group = requests
       .filter((r) => r.status === status)
-      .filter((r) =>
-        r.customerName.toLowerCase().includes(search.toLowerCase()) ||
-        r.recipient.toLowerCase().includes(search.toLowerCase())
+      .filter(
+        (r) =>
+          r.customerName.toLowerCase().includes(search.toLowerCase()) ||
+          r.recipient.toLowerCase().includes(search.toLowerCase())
       );
     return group.length ? [{ header: status }, ...group] : [];
   });
@@ -70,8 +71,8 @@ export default function CelebrityDashboard({ navigation, route }) {
   };
 
   const total = requests.length;
-  const pending = requests.filter(r => r.status === 'Pending').length;
-  const accepted = requests.filter(r => r.status === 'Accepted').length;
+  const pending = requests.filter((r) => r.status === 'Pending').length;
+  const accepted = requests.filter((r) => r.status === 'Accepted').length;
 
   const renderItem = (data) => {
     if (data.item.header) {
@@ -79,27 +80,46 @@ export default function CelebrityDashboard({ navigation, route }) {
     }
 
     const item = data.item;
+    const deliveryDate = new Date(item.deliveryTime);
+    const now = new Date();
+    const timeLeft = Math.max(deliveryDate - now, 0);
+    const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hoursLeft = Math.floor(
+      (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    );
+    const minutesLeft = Math.floor(
+      (timeLeft % (1000 * 60 * 60)) / (1000 * 60)
+    );
+
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Ionicons name="person-circle-outline" size={28} color={Colors.primary} />
-          <View style={{ marginLeft: 10 }}>
-            <Text style={styles.name}>From: {item.customerName}</Text>
+          <Ionicons name="person-circle-outline" size={36} color={Colors.primary} />
+          <View style={{ marginLeft: 12 }}>
+            <Text style={styles.name}>{item.customerName}</Text>
             <Text style={styles.info}>To: {item.recipient}</Text>
+          </View>
+          <View style={styles.typeBadge}>
+            <Text style={styles.typeText}>{emojiMap[item.messageType]}</Text>
           </View>
         </View>
 
         <View style={styles.detailRow}>
-          <Text style={styles.info}>
-            Type: {emojiMap[item.messageType]} {item.messageType.toUpperCase()}
-          </Text>
-          <Text style={styles.info}>
-            Delivery: {new Date(item.deliveryTime).toLocaleString()}
-          </Text>
-        </View>
-
-        <View style={styles.statusBubble(item.status)}>
-          <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+          <View>
+            <Text style={styles.info}>
+              Delivery Date: {new Date(item.deliveryTime).toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </Text>
+            <Text style={styles.info}>
+              Delivery: ({daysLeft}d {hoursLeft}h {minutesLeft}m left)
+            </Text>
+          </View>
+          <View style={styles.statusBubble(item.status)}>
+            <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -109,13 +129,13 @@ export default function CelebrityDashboard({ navigation, route }) {
               request: item,
               celebProfile,
               updateStatus: (id, newStatus) => {
-                setRequests(prev =>
-                  prev.map(r => (r.id === id ? { ...r, status: newStatus } : r))
+                setRequests((prev) =>
+                  prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
                 );
               },
             })
           }
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
           <Text style={styles.buttonText}>View Details</Text>
         </TouchableOpacity>
@@ -131,7 +151,7 @@ export default function CelebrityDashboard({ navigation, route }) {
         onPress={() => handleDelete(data.item.id)}
       >
         <Ionicons name="trash" size={22} color="#fff" />
-        <Text style={{ color: '#fff', fontSize: 12 }}>Delete</Text>
+        <Text style={{ color: '#fff', fontSize: 12, marginTop: 2 }}>Delete</Text>
       </TouchableOpacity>
     );
   };
@@ -145,7 +165,7 @@ export default function CelebrityDashboard({ navigation, route }) {
       />
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-      <Text style={styles.header}>Hey {celebProfile.name} 👋</Text>
+      <Text style={styles.header}>Hey, {celebProfile.name}</Text>
       <Text style={styles.subHeader}>Ready to make someone smile today?</Text>
 
       <View style={styles.summaryContainer}>
@@ -164,11 +184,11 @@ export default function CelebrityDashboard({ navigation, route }) {
       </View>
 
       <TextInput
-        placeholder="Search by name or recipient..."
+        placeholder="Search requests..."
         style={styles.searchInput}
         value={search}
         onChangeText={setSearch}
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#999"
       />
 
       {groupedRequests.length === 0 ? (
@@ -181,12 +201,12 @@ export default function CelebrityDashboard({ navigation, route }) {
           keyExtractor={(item, index) => item.id || `header-${index}`}
           renderItem={renderItem}
           renderHiddenItem={renderHiddenItem}
-          rightOpenValue={-75}
+          rightOpenValue={-80}
           disableRightSwipe
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
           }
         />
       )}
@@ -195,89 +215,97 @@ export default function CelebrityDashboard({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.06,
-  },
   container: {
     flex: 1,
     paddingTop: 60,
     paddingHorizontal: 20,
-    backgroundColor: '#fff9f5',
+    backgroundColor: '#F7F7F7',
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.03,
   },
   header: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
     color: Colors.primary,
     marginBottom: 4,
     textAlign: 'center',
   },
   subHeader: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 15,
+    color: Colors.textSecondary + 'CC',
     marginBottom: 20,
     textAlign: 'center',
   },
   summaryContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   summaryCard: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
     flex: 1,
-    marginHorizontal: 4,
+    backgroundColor: Colors.textPrimary,
+    paddingVertical: 16,
+    borderRadius: 20,
+    marginHorizontal: 5,
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.07,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    elevation: 4,
   },
   summaryTitle: {
     fontSize: 12,
-    color: '#888',
+    color: Colors.textSecondary + '88',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    fontWeight: '600',
   },
   summaryCount: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
     color: Colors.primary,
   },
   searchInput: {
     backgroundColor: '#fff',
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderColor: '#eee',
-    borderWidth: 1,
-    marginBottom: 16,
+    borderRadius: 30,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     fontSize: 14,
-    color: '#333',
+    color: Colors.textSecondary,
+    borderWidth: 1,
+    borderColor: '#E2E2E2',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 2,
   },
   groupHeader: {
     fontSize: 16,
     fontWeight: '700',
     color: Colors.primary,
-    marginVertical: 10,
-    marginLeft: 8,
+    marginVertical: 12,
+    marginLeft: 4,
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 5 },
+    shadowRadius: 10,
     elevation: 3,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   name: {
     fontWeight: '700',
@@ -286,48 +314,59 @@ const styles = StyleSheet.create({
   },
   info: {
     fontSize: 13,
-    color: '#444',
+    color: Colors.textSecondary + 'CC',
     marginTop: 2,
   },
   detailRow: {
-    marginTop: 4,
+    marginTop: 6,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  typeBadge: {
+    marginLeft: 'auto',
+    backgroundColor: Colors.primary + '22',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  typeText: {
+    fontSize: 16,
   },
   statusBubble: (status) => ({
     backgroundColor:
       status === 'Pending'
-        ? '#007bff'
+        ? '#FFB700'
         : status === 'Accepted'
-        ? '#ffc107'
-        : '#28a745',
+          ? Colors.accentGreen
+          : '#28A745',
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderRadius: 30,
-    alignSelf: 'flex-start',
-    marginTop: 12,
   }),
   statusText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 12,
   },
   button: {
     marginTop: 14,
-    backgroundColor: Colors.accentGreen,
-    paddingVertical: 12,
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
     borderRadius: 25,
     alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 14,
   },
   hiddenButton: {
     justifyContent: 'center',
     alignItems: 'center',
     width: 75,
-    height: '100%',
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16,
+    height: '80%',
+    backgroundColor: '#FF4D4F',
+    borderRadius: 18,
   },
 });
