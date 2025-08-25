@@ -3,7 +3,6 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import UnifiedAuthScreen from '../screens/auth/UnifiedAuthScreen';
-import OTPVerification from '../screens/auth/OTPVerification';
 
 import CustomerHome from '../screens/customer/CustomerHome';
 import CelebrityList from '../screens/customer/CelebrityList';
@@ -20,6 +19,9 @@ import Withdraw from '../screens/celebrity/Withdraw';
 import { useLogin } from '../context/LoginContext';
 import CustomerTabs from './CustomerTabs';
 import CelebrityTabs from './CelebrityTabs';
+import AuthFormScreen from '../screens/auth/AuthFormScreen';
+import UserTypeSelectionScreen from '../screens/auth/UserTypeSelectionScreen';
+import OTPScreen from '../screens/auth/OTPScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -31,7 +33,9 @@ export default function AuthNavigator() {
       {!isLoggedIn ? (
         <>
           <Stack.Screen name="UnifiedLogin" component={UnifiedAuthScreen} />
-          <Stack.Screen name="OTPVerification" component={OTPVerification} />
+          <Stack.Screen name="OTP" component={OTPScreen} />
+          <Stack.Screen name="AuthForm" component={AuthFormScreen} />
+          <Stack.Screen name="UserTypeSelection" component={UserTypeSelectionScreen} />
         </>
       ) : userType === 'customer' ? (
         <>

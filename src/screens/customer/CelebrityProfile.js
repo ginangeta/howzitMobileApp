@@ -9,6 +9,7 @@ import {
   ScrollView,
   FlatList,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAppTheme } from '../../context/ThemeContext';
@@ -55,7 +56,7 @@ export default function CelebrityProfile({ route, navigation }) {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.secondary }]}> 
       {/* Back button (keeps original navigation style) */}
       <TouchableOpacity
         activeOpacity={0.9}
@@ -193,7 +194,7 @@ export default function CelebrityProfile({ route, navigation }) {
         onPress={() => navigation.navigate('ShoutoutRequest', { celeb })}>
         <Text style={styles.ctaText}>Book Now</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -201,7 +202,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, position: 'relative' },
   backButton: {
     position: 'absolute',
-    top: 50,
+    top: 20,
     left: 12,
     zIndex: 20,
     width: 40,
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     }),
   },
   heroImage: { width: '100%', height: 280 },
-  scroll: { paddingTop: 80, paddingBottom: 120 },
+  scroll: { paddingBottom: 120 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

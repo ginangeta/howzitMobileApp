@@ -278,7 +278,7 @@ export default function ShoutoutRequest({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 30 },
+  container: { flex: 1 },
   headerGradient: {
     position: 'absolute',
     top: 0,
@@ -287,13 +287,13 @@ const styles = StyleSheet.create({
     height: 160,
   },
   contentContainer: {
-    paddingTop: 60,
+    paddingTop: 30,
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
   backButton: {
     position: 'absolute',
-    top: 44,
+    top: 20,
     left: 18,
     zIndex: 20,
     width: 40,

@@ -5,7 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  ScrollView,
+  SafeAreaView,
   Image,
   ToastAndroid,
   Platform,
@@ -132,7 +132,7 @@ export default function RequestDetails({ navigation }) {
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors.secondary }]}>
       <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
         <Icon name="arrow-back-outline" size={24} color={Colors.secondary} />
       </TouchableOpacity>
@@ -210,19 +210,16 @@ export default function RequestDetails({ navigation }) {
         renderItem={renderShoutoutItem}
         contentContainerStyle={{ paddingVertical: 12 }}
       />
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 24,
-    paddingBottom: 40,
-    backgroundColor: '#F7F7F7',
+    flex: 1
   },
   backBtn: {
     position: 'absolute',
-    top: 44,
     left: 18,
     zIndex: 20,
     backgroundColor: Colors.primary,
@@ -242,7 +239,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.primary,
     marginBottom: 6,
-    marginTop: 50,
     textAlign: 'center',
   },
   subHeading: {

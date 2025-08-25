@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// src/screens/wallet/WalletScreen.js
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +9,8 @@ import {
   ScrollView,
   StatusBar,
   Animated,
+  Platform,
+  SafeAreaView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -18,74 +21,73 @@ import { useAppTheme } from '../../context/ThemeContext';
 
 export default function WalletScreen({ navigation }) {
   const { setIsLoggedIn } = useLogin();
-  const [animatedBalance] = useState(new Animated.Value(0));
-  const { themeName, toggleTheme, colors } = useAppTheme();
+
+  // Use a ref so the Animated.Value persists across renders
+  const animatedBalance = useRef(new Animated.Value(0)).current;
+
+  // Theme: prefer ThemeContext.colors, then fall back to Colors[themeName], then Colors.light
+  const {
+    themeName = 'light',
+    toggleTheme = () => {},
+    colors: themeColors,
+  } = useAppTheme() || {};
+  const C = themeColors || Colors[themeName] || Colors.light;
+
   const [displayBalance, setDisplayBalance] = useState(0);
   const balance = 5924.5;
 
-
-  // Animated balance
+  // Animate the balance and clean up listener + animation on unmount
   useEffect(() => {
-    const listener = animatedBalance.addListener(({ value }) =>
-      setDisplayBalance(value)
-    );
-    Animated.timing(animatedBalance, {
+    const listenerId = animatedBalance.addListener(({ value }) => setDisplayBalance(value));
+
+    const anim = Animated.timing(animatedBalance, {
       toValue: balance,
       duration: 1200,
       useNativeDriver: false,
-    }).start();
-    return () => animatedBalance.removeListener(listener);
+    });
+    anim.start();
+
+    return () => {
+      // remove listener and stop animation (defensive)
+      animatedBalance.removeListener(listenerId);
+      anim.stop && anim.stop();
+    };
   }, [animatedBalance, balance]);
 
-  const currentColors = Colors[themeName];
+  // Use theme tokens from C safely (provide useful fallbacks)
+  const gradientColors = [C.primary || '#FF7A00', C.accentOrange || C.accent || (C.primary || '#FF7A00')];
+  const textPrimary = C.textPrimary || '#111';
+  const textSecondary = C.textSecondary || '#666';
 
   const walletMenus = [
-    {
-      id: 'deposit',
-      title: 'Deposit Funds',
-      icon: 'wallet',
-      color: currentColors.primary,
-      screen: 'Deposit',
-    },
-    {
-      id: 'withdraw',
-      title: 'Withdraw Funds',
-      icon: 'cash-outline',
-      color: currentColors.accentGreen,
-      screen: 'Withdraw',
-    },
-    {
-      id: 'transactions',
-      title: 'Transactions',
-      icon: 'list-outline',
-      color: currentColors.accentBlue,
-      screen: 'Transactions',
-    },
-    {
-      id: 'settings',
-      title: 'Settings',
-      icon: 'settings-outline',
-      color: currentColors.textSecondary,
-      screen: 'Settings',
-    },
+    { id: 'deposit', title: 'Deposit Funds', icon: 'wallet', color: C.primary, screen: 'Deposit' },
+    { id: 'withdraw', title: 'Withdraw Funds', icon: 'cash-outline', color: C.accentGreen, screen: 'Withdraw' },
+    { id: 'transactions', title: 'Transactions', icon: 'list-outline', color: C.accentBlue, screen: 'Transactions' },
+    { id: 'settings', title: 'Settings', icon: 'settings-outline', color: C.textSecondary, screen: 'Settings' },
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: currentColors.background }]}>
-      <StatusBar translucent backgroundColor="transparent" barStyle={themeName === 'dark' ? 'light-content' : 'dark-content'} />
+    <SafeAreaView style={[styles.container, { backgroundColor: C.background || '#fff' }]}>
+      {/* IMPORTANT: avoid setting translucent=true here — it persists globally and breaks other screens */}
+      <StatusBar
+        translucent={false}
+        backgroundColor={C.background || '#fff'}
+        barStyle={themeName === 'dark' ? 'light-content' : 'dark-content'}
+      />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic" // helps iOS adjust for safe areas
+      >
         {/* Header */}
-        <LinearGradient
-          colors={[currentColors.primary, currentColors.accentOrange]}
-          style={styles.header}
-        >
+        <LinearGradient colors={gradientColors} style={styles.header}>
           {/* Theme Toggle */}
           <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
             <Icon
               name={themeName === 'dark' ? 'sunny-outline' : 'moon-outline'}
               size={22}
-              color={currentColors.textPrimary}
+              color={C.textPrimary || '#fff'}
             />
           </TouchableOpacity>
 
@@ -93,22 +95,19 @@ export default function WalletScreen({ navigation }) {
             source={{
               uri: 'https://merry-strudel-581da2.netlify.app/assets/img/doctor-grid/felista.jpg',
             }}
-            style={[styles.avatar, { borderColor: currentColors.textPrimary }]}
+            style={[styles.avatar, { borderColor: C.textPrimary || '#fff' }]}
           />
-          <Text style={[styles.username, { color: currentColors.textPrimary }]}>
-            Gina Wambui
-          </Text>
-          <Text style={[styles.userEmail, { color: currentColors.textPrimary }]}>
+
+          <Text style={[styles.username, { color: textPrimary }]}>Gina Wambui</Text>
+          <Text style={[styles.userEmail, { color: textPrimary, opacity: 0.9 }]}>
             gina@example.com
           </Text>
         </LinearGradient>
 
         {/* Balance Card */}
-        <View style={[styles.balanceCard, { backgroundColor: currentColors.bubbleBg }]}>
-          <Text style={[styles.balanceLabel, { color: currentColors.textSecondary }]}>
-            Available Balance
-          </Text>
-          <Text style={[styles.balanceValue, { color: currentColors.textSecondary }]}>
+        <View style={[styles.balanceCard, { backgroundColor: C.bubbleBg || '#fff' }]}>
+          <Text style={[styles.balanceLabel, { color: C.textSecondary || textSecondary }]}>Available Balance</Text>
+          <Text style={[styles.balanceValue, { color: C.textSecondary || textSecondary }]}>
             ZWG {displayBalance.toFixed(2)}
           </Text>
         </View>
@@ -118,23 +117,25 @@ export default function WalletScreen({ navigation }) {
           {walletMenus.map((menu) => (
             <TouchableOpacity
               key={menu.id}
-              style={[styles.menuCard, { backgroundColor: currentColors.bubbleBg }]}
+              style={[styles.menuCard, { backgroundColor: C.bubbleBg || '#fff' }]}
               onPress={() => navigation.navigate(menu.screen)}
             >
-              <View style={[styles.iconBox, { backgroundColor: menu.color }]}>
+              <View style={[styles.iconBox, { backgroundColor: menu.color || C.primary }]}>
                 <Icon name={menu.icon} size={22} color="#fff" />
               </View>
-              <Text style={[styles.menuText, { color: currentColors.textSecondary }]}>
+
+              <Text style={[styles.menuText, { color: C.textSecondary || textSecondary }]}>
                 {menu.title}
               </Text>
-              <Icon name="chevron-forward-outline" size={20} color={currentColors.textSecondary} />
+
+              <Icon name="chevron-forward-outline" size={20} color={C.textSecondary || textSecondary} />
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Logout */}
         <TouchableOpacity
-          style={[styles.logoutBtn, { backgroundColor: currentColors.accentRed }]}
+          style={[styles.logoutBtn, { backgroundColor: C.accentRed || '#FF4D4F' }]}
           onPress={async () => {
             await AsyncStorage.removeItem('userToken');
             await AsyncStorage.removeItem('userInfo');
@@ -142,10 +143,10 @@ export default function WalletScreen({ navigation }) {
             navigation.reset({ index: 0, routes: [{ name: 'UnifiedLogin' }] });
           }}
         >
-          <Text style={[styles.logoutText, { color: currentColors.textPrimary }]}>Logout</Text>
+          <Text style={[styles.logoutText, { color: C.textPrimary || '#fff' }]}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -156,15 +157,16 @@ const styles = StyleSheet.create({
   // Header
   header: {
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 36,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     position: 'relative',
+    paddingTop: Platform.OS === 'android' ? 18 : 28,
   },
   themeToggle: {
     position: 'absolute',
-    top: 40,
-    right: 20,
+    top: 14,
+    right: 16,
     padding: 6,
     borderRadius: 20,
   },
@@ -176,16 +178,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   username: { fontSize: 18, fontWeight: '700' },
-  userEmail: { fontSize: 14, opacity: 0.9 },
+  userEmail: { fontSize: 14 },
 
   // Balance Card
   balanceCard: {
     marginHorizontal: 20,
-    marginTop: -10,
+    marginTop: -26,
     borderRadius: 16,
     alignItems: 'center',
     paddingVertical: 24,
     paddingHorizontal: 16,
+    shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
@@ -203,6 +206,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 12,
+    shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,

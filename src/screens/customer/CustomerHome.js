@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   container: {
     flex: 1,
-    paddingTop: 12,
+    paddingTop: 20,
     paddingHorizontal: 16,
   },
   heroTitle: {
