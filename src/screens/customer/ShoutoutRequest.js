@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   ScrollView,
+  Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -18,29 +19,56 @@ export default function ShoutoutRequest({ route, navigation }) {
   const { celeb } = route.params;
   const { colors } = useAppTheme();
 
+  // --- Helpers -------------------------------------------------------------
+  const HOUR = 60 * 60 * 1000;
+  const getMinDelivery = () => new Date(Date.now() + 24 * HOUR); // always computed fresh
+
+  const clampToMinDelivery = (candidate) => {
+    const min = getMinDelivery();
+    if (!(candidate instanceof Date) || isNaN(candidate.getTime())) return new Date(min);
+    return candidate < min ? new Date(min) : new Date(candidate);
+  };
+
+  // Round to nearest 5 minutes going forward (helps avoid odd seconds from pickers)
+  const roundToNext5Min = (d) => {
+    const ms = 5 * 60 * 1000;
+    return new Date(Math.ceil(d.getTime() / ms) * ms);
+  };
+
+  // --- State ---------------------------------------------------------------
   const [message, setMessage] = useState('');
   const [recipient, setRecipient] = useState('');
   const [purpose, setPurpose] = useState('');
   const [messageType, setMessageType] = useState('text');
-  const [date, setDate] = useState(new Date(Date.now() + 25 * 60 * 60 * 1000)); // +25 hrs
-  const [showPicker, setShowPicker] = useState(false);
 
+  // Start at now + 25h to satisfy the 24h rule by default
+  const [date, setDate] = useState(() => roundToNext5Min(new Date(Date.now() + 25 * HOUR)));
+
+  // iOS: single datetime picker; Android: 2-step (date -> time)
+  const [showIOSPicker, setShowIOSPicker] = useState(false);
+  const [showAndroidDate, setShowAndroidDate] = useState(false);
+  const [showAndroidTime, setShowAndroidTime] = useState(false);
+  const [androidTempDate, setAndroidTempDate] = useState(null); // holds the picked calendar date before time is chosen
+
+  // --- Pricing/summary -----------------------------------------------------
   const mockWalletBalance = 5000;
   const shoutoutPrice = 3000;
-  const timeUntilDelivery = Math.max(
-    1,
-    Math.round((date - new Date()) / (60 * 60 * 1000))
-  );
 
+  const timeUntilDelivery = useMemo(() => {
+    const diff = (date instanceof Date ? date.getTime() : 0) - Date.now();
+    if (!isFinite(diff)) return 1;
+    return Math.max(1, Math.ceil(diff / HOUR));
+  }, [date]);
+
+  // --- Validation & submit -------------------------------------------------
   const validateAndSubmit = () => {
     if (!message.trim() || !recipient.trim() || !purpose.trim()) {
       Alert.alert('Missing Info', 'Please fill in recipient, purpose and message.');
       return;
     }
 
-    const now = new Date();
-    const minTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    if (date <= minTime) {
+    const minTime = getMinDelivery();
+    if (!(date instanceof Date) || isNaN(date.getTime()) || date <= minTime) {
       Alert.alert('Invalid Time', 'Shoutout time must be at least 24 hours from now.');
       return;
     }
@@ -79,12 +107,61 @@ export default function ShoutoutRequest({ route, navigation }) {
     }
   };
 
-  const onChange = (event, selectedDate) => {
-    setShowPicker(false);
-    if (event.type === 'set' && selectedDate) {
-      setDate(selectedDate);
+  // --- Date picking logic (robust & crash-safe) ---------------------------
+  const openPicker = () => {
+    if (Platform.OS === 'ios') {
+      setShowIOSPicker(true);
+    } else {
+      // Android must pick date then time separately
+      setShowAndroidDate(true);
     }
   };
+
+  // iOS unified datetime
+  const onChangeIOS = (event, selectedDate) => {
+    // User may dismiss the dialog
+    if (event?.type === 'dismissed') {
+      setShowIOSPicker(false);
+      return;
+    }
+    if (event?.type === 'set' && selectedDate) {
+      const clamped = clampToMinDelivery(roundToNext5Min(selectedDate));
+      setDate(clamped);
+      setShowIOSPicker(false);
+    }
+  };
+
+  // Android two-step: date then time
+  const onChangeAndroidDate = (event, pickedDate) => {
+    setShowAndroidDate(false);
+    if (event?.type !== 'set' || !pickedDate) return; // dismissed
+    const onlyDate = new Date(pickedDate);
+    onlyDate.setHours(0, 0, 0, 0);
+    setAndroidTempDate(onlyDate);
+    // proceed to time picker
+    setShowAndroidTime(true);
+  };
+
+  const onChangeAndroidTime = (event, pickedTime) => {
+    setShowAndroidTime(false);
+    if (event?.type !== 'set' || !pickedTime) {
+      setAndroidTempDate(null);
+      return; // dismissed
+    }
+    try {
+      const final = new Date(androidTempDate || new Date());
+      final.setHours(pickedTime.getHours(), pickedTime.getMinutes(), 0, 0);
+      const clamped = clampToMinDelivery(roundToNext5Min(final));
+      setDate(clamped);
+    } catch (e) {
+      // Fallback to min delivery if anything goes wrong
+      setDate(clampToMinDelivery(getMinDelivery()));
+    } finally {
+      setAndroidTempDate(null);
+    }
+  };
+
+  const minDelivery = getMinDelivery();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.secondary }]}>
@@ -106,58 +183,35 @@ export default function ShoutoutRequest({ route, navigation }) {
           <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
 
-        <Text style={[styles.title, { color: colors.textSecondary }]}>
-          Request a Shoutout
-        </Text>
+        <Text style={[styles.title, { color: colors.textSecondary }]}>Request a Shoutout</Text>
 
         {/* Summary Card */}
         <View style={[styles.summaryCard, { backgroundColor: colors.bubbleBg }]}>
           <View style={styles.summaryLeft}>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              Price
-            </Text>
-            <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>
-              ZWG {shoutoutPrice}
-            </Text>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Price</Text>
+            <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>ZWG {shoutoutPrice}</Text>
           </View>
           <View style={styles.summaryMid}>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              Wallet
-            </Text>
-            <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>
-              ZWG {mockWalletBalance}
-            </Text>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Wallet</Text>
+            <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>ZWG {mockWalletBalance}</Text>
           </View>
           <View style={styles.summaryRight}>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              ETA
-            </Text>
-            <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>
-              ~{timeUntilDelivery}h
-            </Text>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>ETA</Text>
+            <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>~{timeUntilDelivery}h</Text>
           </View>
         </View>
 
         {/* Celeb Card */}
         <View style={[styles.celebCard, { backgroundColor: colors.secondary }]}>
-          <Image
-            source={{ uri: celeb.image || celeb.avatar }}
-            style={styles.celebImage}
-          />
+          <Image source={{ uri: celeb.image || celeb.avatar }} style={styles.celebImage} />
           <View style={styles.celebInfo}>
-            <Text style={[styles.celebName, { color: colors.textSecondary }]}>
-              {celeb.name}
-            </Text>
-            <Text style={[styles.celebRole, { color: colors.primary }]}>
-              {celeb.role || 'Public Figure'}
-            </Text>
+            <Text style={[styles.celebName, { color: colors.textSecondary }]}>{celeb.name}</Text>
+            <Text style={[styles.celebRole, { color: colors.primary }]}>{celeb.role || 'Public Figure'}</Text>
           </View>
         </View>
 
         {/* Recipient */}
-        <Text style={[styles.label, { color: colors.textSecondary }]}>
-          Recipient Name
-        </Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>Recipient Name</Text>
         <TextInput
           style={[styles.input, { backgroundColor: colors.bubbleBg, color: colors.textSecondary }]}
           value={recipient}
@@ -167,9 +221,7 @@ export default function ShoutoutRequest({ route, navigation }) {
         />
 
         {/* Purpose */}
-        <Text style={[styles.label, { color: colors.textSecondary }]}>
-          Purpose
-        </Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>Purpose</Text>
         <TextInput
           style={[styles.input, { backgroundColor: colors.bubbleBg, color: colors.textSecondary }]}
           value={purpose}
@@ -179,15 +231,9 @@ export default function ShoutoutRequest({ route, navigation }) {
         />
 
         {/* Message */}
-        <Text style={[styles.label, { color: colors.textSecondary }]}>
-          Your Message
-        </Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>Your Message</Text>
         <TextInput
-          style={[
-            styles.input,
-            styles.messageInput,
-            { backgroundColor: colors.bubbleBg, color: colors.textSecondary },
-          ]}
+          style={[styles.input, styles.messageInput, { backgroundColor: colors.bubbleBg, color: colors.textSecondary }]}
           value={message}
           onChangeText={setMessage}
           multiline
@@ -196,9 +242,7 @@ export default function ShoutoutRequest({ route, navigation }) {
         />
 
         {/* Message Type */}
-        <Text style={[styles.label, { color: colors.textSecondary }]}>
-          Message Type
-        </Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>Message Type</Text>
         <View style={styles.bubbles}>
           {['text', 'video', 'audio'].map((type) => (
             <TouchableOpacity
@@ -206,10 +250,8 @@ export default function ShoutoutRequest({ route, navigation }) {
               style={[
                 styles.bubble,
                 {
-                  backgroundColor:
-                    messageType === type ? colors.primary : colors.secondary,
-                  borderColor:
-                    messageType === type ? colors.primary : colors.bubbleBg,
+                  backgroundColor: messageType === type ? colors.primary : colors.secondary,
+                  borderColor: messageType === type ? colors.primary : colors.bubbleBg,
                 },
               ]}
               onPress={() => setMessageType(type)}
@@ -229,48 +271,50 @@ export default function ShoutoutRequest({ route, navigation }) {
         </View>
 
         {/* Delivery Time */}
-        <Text style={[styles.label, { color: colors.textSecondary }]}>
-          Delivery Time
-        </Text>
-        <TouchableOpacity
-          onPress={() => setShowPicker(true)}
-          style={[styles.datePicker, { backgroundColor: colors.bubbleBg }]}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-            {date.toLocaleString()}
-          </Text>
-          <Ionicons
-            name="calendar-outline"
-            size={18}
-            color={colors.textSecondary}
-            style={{ marginLeft: 12 }}
-          />
+        <Text style={[styles.label, { color: colors.textSecondary }]}>Delivery Time</Text>
+        <TouchableOpacity onPress={openPicker} style={[styles.datePicker, { backgroundColor: colors.bubbleBg }]} activeOpacity={0.8}>
+          <Text style={[styles.dateText, { color: colors.textSecondary }]}>{date?.toLocaleString?.() || ''}</Text>
+          <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={{ marginLeft: 12 }} />
         </TouchableOpacity>
 
-        {showPicker && (
+        {/* Platform-specific pickers */}
+        {Platform.OS === 'ios' && showIOSPicker && (
           <DateTimePicker
             value={date}
             mode="datetime"
-            minimumDate={new Date(Date.now() + 24 * 60 * 60 * 1000)}
-            display="default"
-            onChange={onChange}
+            minimumDate={minDelivery}
+            display="spinner"
+            onChange={onChangeIOS}
+          />
+        )}
+
+        {Platform.OS === 'android' && showAndroidDate && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            minimumDate={minDelivery}
+            display="calendar"
+            onChange={onChangeAndroidDate}
+          />
+        )}
+
+        {Platform.OS === 'android' && showAndroidTime && (
+          <DateTimePicker
+            value={date}
+            mode="time"
+            is24Hour
+            display="clock"
+            onChange={onChangeAndroidTime}
           />
         )}
 
         {/* Book Button */}
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.primary }]}
-          onPress={validateAndSubmit}
-          activeOpacity={0.9}
-        >
-          <Text style={[styles.buttonText, { color: colors.textPrimary }]}>
-            Book now • ZWG {shoutoutPrice}
-          </Text>
+        <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={validateAndSubmit} activeOpacity={0.9}>
+          <Text style={[styles.buttonText, { color: colors.textPrimary }]}>Book now • ZWG {shoutoutPrice}</Text>
         </TouchableOpacity>
 
         <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-          We’ll notify you once the celebrity accepts and records your shoutout.
+          Earliest available time is {minDelivery.toLocaleString()}. We’ll notify you once the celebrity accepts and records your shoutout.
         </Text>
       </ScrollView>
     </View>
