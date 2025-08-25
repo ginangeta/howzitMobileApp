@@ -12,6 +12,7 @@ import {
   ToastAndroid,
   Image,
   Animated,
+  SafeAreaView
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -61,7 +62,7 @@ export default function StatusTracker({ route, navigation }) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.secondary }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.secondary }]}>
       <LinearGradient
         colors={[`${colors.primary}22`, `${colors.primary}00`]}
         style={styles.headerGradient}
@@ -205,17 +206,17 @@ export default function StatusTracker({ route, navigation }) {
           </>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   headerGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 160, opacity: 0.15 },
-  contentContainer: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40 },
+  contentContainer: { paddingTop: 40, paddingHorizontal: 20, paddingBottom: 40 },
   backButton: {
     position: 'absolute',
-    top: 44,
+    top: 24,
     left: 18,
     zIndex: 20,
     width: 40,

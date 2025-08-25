@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   SectionList,
+  SafeAreaView,
 } from "react-native";
 import { useAppTheme } from "../../context/ThemeContext";
 import * as Animatable from "react-native-animatable";
@@ -139,7 +140,7 @@ export default function RequestList({ navigation }) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <Text style={[styles.heading, { color: colors.primary }]}>
         Your Shoutout Requests
       </Text>
@@ -171,7 +172,7 @@ export default function RequestList({ navigation }) {
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -9,6 +9,7 @@ import {
   Image,
   ScrollView,
   Platform,
+  SafeAreaView
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -58,7 +59,7 @@ export default function ShoutoutRequest({ route, navigation }) {
     const diff = (date instanceof Date ? date.getTime() : 0) - Date.now();
     if (!isFinite(diff)) return 1;
     return Math.max(1, Math.ceil(diff / HOUR));
-  }, [date]);
+  }, [date,HOUR]);
 
   // --- Validation & submit -------------------------------------------------
   const validateAndSubmit = () => {
@@ -164,7 +165,7 @@ export default function ShoutoutRequest({ route, navigation }) {
   const minDelivery = getMinDelivery();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.secondary }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.secondary }]}>
       <LinearGradient
         colors={[`${colors.primary}22`, `${colors.primary}00`]}
         style={styles.headerGradient}
@@ -317,7 +318,7 @@ export default function ShoutoutRequest({ route, navigation }) {
           Earliest available time is {minDelivery.toLocaleString()}. We’ll notify you once the celebrity accepts and records your shoutout.
         </Text>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
